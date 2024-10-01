@@ -1,9 +1,10 @@
 import { pipeline } from '@huggingface/transformers'
+import { CreateMLCEngine } from '@mlc-ai/web-llm';
 
 class PipelineSingleton {
-  static task = 'feature-extraction'
-  static model = 'Supabase/gte-small'
-  static instance = null
+  static task = 'feature-extraction';
+  static model = 'Supabase/gte-small';
+  static instance = null;
 
   static async getInstance(progress_callback = null) {
     if (this.instance === null) {
@@ -11,37 +12,33 @@ class PipelineSingleton {
         progress_callback,
         dtype: 'fp32',
         device: navigator.gpu ? 'webgpu' : 'wasm',
-      })
+      });
     }
-    return this.instance
+    return this.instance;
   }
 }
 
-class QAPipelineSingleton {
-  static task = 'question-answering'
-  static model = 'Xenova/distilbert-base-cased-distilled-squad'
-  static instance = null
+class TextGenerationSingleton {
+  static model = 'Llama-3.2-1B-Instruct-q4f32_1-MLC';
+  static instance = null;
 
   static async getInstance(progress_callback = null) {
     if (this.instance === null) {
-      this.instance = pipeline(this.task, this.model, {
-        progress_callback,
-        dtype: 'fp32',
-        device: navigator.gpu ? 'webgpu' : 'wasm',
-      })
+      this.instance = await CreateMLCEngine(this.model, {
+        initProgressCallback: progress_callback,
+      });
     }
-    return this.instance
+    return this.instance;
   }
 }
-
 
 self.addEventListener('message', async (event) => {
   console.log('Worker received message:', event.data);
   console.log('Worker type:', event.data.type);
   const { type, data } = event.data;
   let classifier = await PipelineSingleton.getInstance((x) => {
-    self.postMessage(x)
-  })
+    self.postMessage(x);
+  });
 
   switch (type) {
     case 'process_chunks': {
@@ -65,28 +62,35 @@ self.addEventListener('message', async (event) => {
       let output = await classifier(data.query, {
         pooling: 'mean',
         normalize: true,
-      })
+      });
 
-      const embedding = Array.from(output.data)
+      const embedding = Array.from(output.data);
 
       self.postMessage({
         status: 'search_complete',
         embedding,
-      })
+      });
       break;
-    };
-    case 'qa': {
-      console.log('QA data:', data);
-      let classifier = await QAPipelineSingleton.getInstance((x) => {
-        self.postMessage(x)
-      })
-      let output = await classifier(data.query, data.context)
+    }
+    case 'generate_text': {
+      console.log('Text generation data:', data);
+      let generator = await TextGenerationSingleton.getInstance((x) => {
+        self.postMessage(x);
+      });
+      const messages = [
+        { role: 'system', content: 'You are a helpful AI assistant.' },
+        { role: 'user', content: data.query },
+        { role: 'user', content: data.context },
+      ];
+      let output = await generator.chat.completions.create({
+        messages,
+      });
 
       self.postMessage({
-        status: 'qa_complete',
-        output,
-      })
+        status: 'text_generation_complete',
+        output: output.choices[0].message,
+      });
       break;
     }
   }
-})
+});

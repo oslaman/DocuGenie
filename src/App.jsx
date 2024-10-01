@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { getDB, initSchema, countRows, seedDb, search } from './utils/db'
 
-
 import './App.css'
 
 function App() {
@@ -43,12 +42,12 @@ function App() {
           {
             console.log(e.data);
             const searchResults = await search(db.current, e.data.embedding);
-            let system_prompt = "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, say that you don't know. Use three sentences maximum and keep the answer concise. \n\n" + searchInput
+            let system_prompt = "Using this information from the context, respond to the following query. Use three sentences or less. Clean your response, so no hashtags or other symbols (like '\n'). \n\n" + searchInput;
             worker.current.postMessage({
-              type: 'qa',
+              type: 'generate_text',
               data: {
                 query: system_prompt,
-                context: searchResults[0].content,
+                context: searchResults.map(result => result.content).join('\n'),
               },
             });
             break;
@@ -59,8 +58,8 @@ function App() {
           await seedDb(db.current, result);
           break;
         }
-        case "qa_complete": {
-          setAnswerResult(e.data.output);
+        case "text_generation_complete": {
+          setAnswerResult(e.data.output['content']);
           break;
         }
       }
@@ -107,15 +106,6 @@ function App() {
           <p><strong>Number of Pages:</strong> {fileDetails.pages}</p>
         </div>
       )}
-      {/* {ready !== null && (
-        <>
-          <p className="text-center">Embeddings: </p>
-          <pre>{content.join("\n")}</pre>
-          <pre>
-            {!ready || !embedResult ? "Loading..." : JSON.stringify(embedResult)}
-          </pre>
-        </>
-      )} */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -131,9 +121,9 @@ function App() {
         <button type="submit">Submit</button>
       </form>
       <h2>Answer</h2>
-      <pre>
-        {JSON.stringify(answerResult)}
-      </pre>
+      <div style={{ whiteSpace: 'pre-wrap' }}>
+        {answerResult}
+      </div>
     </>
   )
 }
