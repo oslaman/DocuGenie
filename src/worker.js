@@ -61,6 +61,7 @@ self.addEventListener('message', async (event) => {
       console.log(`Embedding completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
       break;
     }
+    
     case 'search': {
       const t0 = performance.now();
       let output = await classifier(data.query, {

@@ -52,14 +52,16 @@ function App() {
         case "search_complete":
           {
             const searchResults = await search(db.current, e.data.embedding);
+            console.log("Risultati: ",searchResults);
             setDocumentContext(searchResults.map(result => result.content).join('\n'));
-            let system_prompt = "Using this information from the context, respond to the following query. Use three sentences or less. Clean your response, so no hashtags or other symbols (like '\n'). \n\n" + searchInput;
-            // let system_prompt = "Usando queste informazioni dal contesto, rispondi alla seguente query. Usa tre frasi o meno. Pulisci la tua risposta in modo che non ci siano simboli come '#' o altri simboli non necessari. \n\n" + searchInput;
+            let retrieved_pages = searchResults.map(result => result.page_id).join(', ');
+            let system_prompt = "Using this information from the context, respond to the following query. Use three sentences or less. Clean your response, so no hashtags or other symbols (like '\n'). Beside your answer, write the page number where you got the information from. Remove duplicate pages. \n\n" + searchInput;
+            // let system_prompt = "Usando queste informazioni dal contesto, rispondi alla seguente query. Usa tre frasi o meno. Pulisci la tua risposta in modo che non ci siano simboli come '#' o altri simboli non necessari. Mostra la pagina dove hai trovato l'informazione. Ignora le pagine duplicate. \n\n" + searchInput;
             worker.current.postMessage({
               type: 'generate_text',
               data: {
                 query: system_prompt,
-                context: searchResults.map(result => result.content).join('\n'),
+                context: "Pages:" + retrieved_pages + "\n\n" + searchResults.map(result => result.content).join('\n'),
               },
             });
             break;
@@ -106,6 +108,17 @@ function App() {
     reader.readAsText(file);
   };
 
+  const handleEmbeddingsUpload = async (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+      reader.onload = async (e) => {
+        const json = JSON.parse(e.target.result);
+        const embeddings = json.chunks;
+        await seedDb(db.current, embeddings);
+    };
+    reader.readAsText(file);
+  };
+
   const classify = useCallback((text) => {
     if (worker.current) {
       worker.current.postMessage({ type: "search", data: { query: text } });
@@ -116,6 +129,8 @@ function App() {
     <>
       <label htmlFor="file-upload">Carica il file</label>
       <input type="file" id="file-upload" onChange={handleFileUpload} /><br />
+      <label htmlFor="embeddings-upload">Carica i file di embeddings</label>
+      <input type="file" id="embeddings-upload" multiple onChange={handleEmbeddingsUpload} />
       {fileDetails.title && (
         <div>
           <p><strong>Autore:</strong> {fileDetails.author}</p>

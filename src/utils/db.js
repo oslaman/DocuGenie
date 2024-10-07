@@ -23,10 +23,12 @@ export const initSchema = async (db) => {
     return await db.exec(`
       create extension if not exists vector;
       create extension if not exists pg_trgm; -- Per BM25
-      drop table if exists embeddings;
+      -- drop table if exists embeddings;
 
       create table if not exists embeddings (
         id bigint primary key generated always as identity,
+        page_id integer not null,
+        chunk_id integer not null,
         content text not null,
         embedding vector (384)
       );
@@ -46,10 +48,10 @@ export const seedDb = async (db, embeddings) => {
     for (const embedding of embeddings) {
         await db.query(
             `
-        insert into embeddings (content, embedding)
-        values ($1, $2);
+        insert into embeddings (page_id, chunk_id, content, embedding)
+        values ($1, $2, $3, $4);
       `,
-            [embedding.content, JSON.stringify(embedding.embedding)],
+            [embedding.page, embedding.index, embedding.text, JSON.stringify(embedding.embedding_of_chunk)],
         );
     }
     console.log(await countRows(db, "embeddings"));
@@ -88,4 +90,13 @@ export const search = async (
         .slice(0, limit);
 
     return combinedResults;
+};
+
+export const clearDb = async (db) => {
+    await db.query(`truncate table embeddings;`);
+};
+
+export const getDbData = async (db) => {
+    const res = await db.query(`SELECT * FROM embeddings;`);
+    return res.rows;
 };
