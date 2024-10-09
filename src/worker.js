@@ -23,6 +23,9 @@ class TextGenerationSingleton {
   static instance = null;
 
   static async getInstance(progress_callback = null) {
+    if (!navigator.gpu) {
+      throw new Error('GPU not supported');
+    }
     if (this.instance === null) {
       this.instance = await CreateMLCEngine(this.model, {
         initProgressCallback: progress_callback,
@@ -48,12 +51,14 @@ self.addEventListener('message', async (event) => {
         return;
       }
       let output = [];
+      console.log('Processing chunks:', data.chunks[0].text);
       for (const chunk of data.chunks) {
-        let result = await classifier(chunk, {
+        let result = await classifier(chunk.text, {
           pooling: 'mean',
           normalize: true,
         });
         let resultArray = Array.from(result.data);
+        console.log(resultArray);
         output.push({ content: chunk, embedding: resultArray });
       }
       self.postMessage({ status: 'embedding_complete', output });
@@ -69,7 +74,8 @@ self.addEventListener('message', async (event) => {
         normalize: true,
       });
 
-      const embedding = Array.from(output.data);
+      const embedding = Array.from(output.data); 
+      console.log(embedding);
 
       self.postMessage({
         status: 'search_complete',
@@ -81,14 +87,21 @@ self.addEventListener('message', async (event) => {
     }
     case 'generate_text': {
       const t0 = performance.now();
-      console.log('Text generation data:', data);
       let generator = await TextGenerationSingleton.getInstance((x) => {
         self.postMessage(x);
       });
+      const system_prompt = "Context information is below.\n\n" +
+              "---------------------\n" +
+              data.context + "\n" +
+              "---------------------\n" +
+              "Given the context information and not prior knowledge, answer the query.\n";
+        
+      const user_prompt = "Query: " + data.query + "\nAnswer: ";
+      console.log("System prompt:", system_prompt);
+      console.log("User prompt:", user_prompt);
       const messages = [
-        { role: 'system', content: 'You are a helpful AI assistant.' },
-        { role: 'user', content: data.query },
-        { role: 'user', content: data.context },
+        { role: 'system', content: system_prompt },
+        { role: 'user', content: user_prompt },
       ];
       let output = await generator.chat.completions.create({
         messages,
