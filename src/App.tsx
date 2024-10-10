@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { getDB, initSchema, countRows, seedDb, seedSingleDb, search, clearDb } from './utils/db';
+import { getDB, initSchema, countRows, seedDb, seedSingleDb, search, clearDb, getDbData } from './utils/db';
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,8 @@ import { InputDialogue } from "@/components/InputDialogue";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Progress } from "@/components/ui/progress";
+import { recursiveChunkingWithPages, TextWithPage } from './utils/chunking';
+
 import './App.css';
 
 interface WorkerMessageEvent extends MessageEvent {
@@ -36,6 +38,7 @@ function App() {
 
   const worker = useRef<Worker | null>(null);
   const db = useRef<any>(null);
+  const pg = useRef<any>(null);
 
   useEffect(() => {
     const setup = async () => {
@@ -82,7 +85,7 @@ function App() {
             break;
           }
         case "embedding_complete": {
-          setProgress(100);
+          setProgress(0);
           const result = e.data.output;
           console.log("Result: ", result)
           await seedSingleDb(db.current, result as any);
@@ -168,12 +171,14 @@ function App() {
 
   async function handleMultipleEmbeddingsUpload(event: React.ChangeEvent<HTMLInputElement>) {
     event.preventDefault();
+    console.log("Dati db: ", await getDbData(db.current));
     const files = Array.from(event.target.files || []);
+    console.log(files)
     const totalFiles = files.length;
     setProgress(0);
-  
+
     const t1 = performance.now();
-  
+
     for (let index = 0; index < totalFiles; index++) {
       const file = files[index];
       if (file instanceof File) {
@@ -181,12 +186,12 @@ function App() {
         setProgress((index + 1) / totalFiles * 100);
       }
     }
-  
+
     setProgress(100);
     console.log("Upload complete");
     const rows = await countRows(db.current, "embeddings");
     setDbRows(rows);
-  
+
     const t2 = performance.now();
     console.log(`Time taken for uploading: ${((t2 - t1) / 1000).toFixed(2)} seconds`);
   }
@@ -221,6 +226,36 @@ function App() {
     });
   }
 
+  const handlePagesUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const content = e.target?.result as string;
+        const jsonData = JSON.parse(content);
+
+        const textWithPages: TextWithPage[] = jsonData.document_body.map((entry: any) => ({
+          text: entry.text,
+          pageNumber: entry.page
+        }));
+
+        const chunks = await recursiveChunkingWithPages(textWithPages, 800, 300);
+        console.table(chunks);
+
+        worker.current?.postMessage({
+          type: 'process_chunks',
+          data: { chunks },
+        });
+      } catch (error) {
+        console.error("Error parsing JSON or processing chunks:", error);
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
   const cleanDatabase = async () => {
     try {
       await clearDb(db.current);
@@ -237,8 +272,12 @@ function App() {
       <div className="app-container">
         <nav className='w-full flex justify-end'><ModeToggle /></nav>
         <main className="app-main">
-          <section className="file-upload-section">
-            <div className='flex flex-col gap-4'>
+          <section className="dashboard-container w-full flex flex-row gap-4">
+            <div className='flex flex-col gap-4 w-full'>
+              <div className="file-upload">
+                <Label htmlFor="pages-upload">Upload text pages</Label>
+                <Input type="file" id="pages-upload" onChange={handlePagesUpload} />
+              </div>
               <div className="file-upload">
                 <Label htmlFor="file-upload">Upload File</Label>
                 <Input type="file" id="file-upload" onChange={handleFileUpload} />
@@ -253,26 +292,26 @@ function App() {
               </div>
               <Progress value={progress} />
             </div>
+            <Card
+              className="max-w-xs h-fit" x-chunk="charts-01-chunk-3"
+            >
+              <CardHeader className="p-4 pb-0">
+                <CardTitle>Database Info</CardTitle>
+                <CardDescription>
+                  Embeddings elements in the database
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-row items-baseline gap-4 p-4 pt-0">
+                <div className="flex items-baseline gap-1 text-3xl font-bold tabular-nums leading-none">
+                  {dbRows}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    db rows
+                  </span>
+                </div>
+                <Button onClick={cleanDatabase}>Clear Database</Button>
+              </CardContent>
+            </Card>
           </section>
-          <Card
-            className="max-w-xs" x-chunk="charts-01-chunk-3"
-          >
-            <CardHeader className="p-4 pb-0">
-              <CardTitle>Database Info</CardTitle>
-              <CardDescription>
-                Embeddings elements in the database
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-row items-baseline gap-4 p-4 pt-0">
-              <div className="flex items-baseline gap-1 text-3xl font-bold tabular-nums leading-none">
-                {dbRows}
-                <span className="text-sm font-normal text-muted-foreground">
-                  db rows
-                </span>
-              </div>
-              <Button onClick={cleanDatabase}>Clear Database</Button>
-            </CardContent>
-          </Card>
           <section className="search-section">
             <InputDialogue
               prompt={prompt}

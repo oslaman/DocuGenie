@@ -19,6 +19,9 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ["@electric-sql/pglite"],
+    exclude: ["@electric-sql/pglite", '@electric-sql/pglite/worker'],
+  },
+  worker: {
+    format: 'es',
   },
 })
