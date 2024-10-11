@@ -293,7 +293,7 @@ function App() {
               <Progress value={progress} />
             </div>
             <Card
-              className="max-w-xs h-fit" x-chunk="charts-01-chunk-3"
+              className="max-w-xs h-fit w-full" x-chunk="charts-01-chunk-3"
             >
               <CardHeader className="p-4 pb-0">
                 <CardTitle>Database Info</CardTitle>
@@ -301,7 +301,7 @@ function App() {
                   Embeddings elements in the database
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-row items-baseline gap-4 p-4 pt-0">
+              <CardContent className="flex flex-row items-baseline gap-4 p-4 pt-0 w-full">
                 <div className="flex items-baseline gap-1 text-3xl font-bold tabular-nums leading-none">
                   {dbRows}
                   <span className="text-sm font-normal text-muted-foreground">
