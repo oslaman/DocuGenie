@@ -23,6 +23,9 @@ class TextGenerationSingleton {
   static instance = null;
 
   static async getInstance(progress_callback = null) {
+    if (!navigator.gpu) {
+      throw new Error('GPU not supported');
+    }
     if (this.instance === null) {
       this.instance = await CreateMLCEngine(this.model, {
         initProgressCallback: progress_callback,
@@ -42,54 +45,91 @@ self.addEventListener('message', async (event) => {
 
   switch (type) {
     case 'process_chunks': {
+      const t0 = performance.now();
       if (!data.chunks || !Array.isArray(data.chunks)) {
         self.postMessage({ error: 'Chunks may not be null or undefined and must be an array' });
         return;
       }
       let output = [];
+      console.log('Processing chunks:', data.chunks[0].text);
       for (const chunk of data.chunks) {
-        let result = await classifier(chunk, {
+        let result = await classifier(chunk.text, {
           pooling: 'mean',
           normalize: true,
         });
         let resultArray = Array.from(result.data);
+        console.log(resultArray);
         output.push({ content: chunk, embedding: resultArray });
       }
       self.postMessage({ status: 'embedding_complete', output });
+      const t1 = performance.now();
+      console.log(`Embedding completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
       break;
     }
+
     case 'search': {
+      const t0 = performance.now();
       let output = await classifier(data.query, {
         pooling: 'mean',
         normalize: true,
       });
 
       const embedding = Array.from(output.data);
+      console.log(embedding);
 
       self.postMessage({
         status: 'search_complete',
         embedding,
       });
+      const t1 = performance.now();
+      console.log(`Search completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
       break;
     }
     case 'generate_text': {
-      console.log('Text generation data:', data);
+      const t0 = performance.now();
       let generator = await TextGenerationSingleton.getInstance((x) => {
         self.postMessage(x);
       });
-      const messages = [
-        { role: 'system', content: 'You are a helpful AI assistant.' },
-        { role: 'user', content: data.query },
-        { role: 'user', content: data.context },
-      ];
-      let output = await generator.chat.completions.create({
-        messages,
-      });
+      const system_prompt = "Context information is below.\n\n" +
+        "---------------------\n" +
+        data.context + "\n" +
+        "---------------------\n" +
+        "Given the context information and not prior knowledge, answer the query.\n";
 
+      const user_prompt = "Query: " + data.query + "\n Your answer: ";
+      const messages = [
+        { role: 'system', content: system_prompt },
+        { role: 'user', content: user_prompt },
+      ];
+
+      const request = {
+        stream: true,
+        stream_options: { insclude_usage: true },
+        messages,
+        logprobs: true,
+        top_logprobs: 2,
+      }
+
+      const asyncChunkGenerator = await generator.chat.completions.create(request);
+      let message = "";
+      for await (const chunk of asyncChunkGenerator) {
+        message += chunk.choices[0]?.delta?.content || "";
+        if (chunk.usage) {
+          console.log(chunk.usage);
+        }
+        self.postMessage({
+          status: 'text_generation_complete',
+          output: message,
+        });
+      }
+      
       self.postMessage({
         status: 'text_generation_complete',
-        output: output.choices[0].message,
+        output: await generator.getMessage(),
       });
+
+      const t1 = performance.now();
+      console.log(`Text generation completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
       break;
     }
   }
