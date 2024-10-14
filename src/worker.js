@@ -66,7 +66,7 @@ self.addEventListener('message', async (event) => {
       console.log(`Embedding completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
       break;
     }
-    
+
     case 'search': {
       const t0 = performance.now();
       let output = await classifier(data.query, {
@@ -74,7 +74,7 @@ self.addEventListener('message', async (event) => {
         normalize: true,
       });
 
-      const embedding = Array.from(output.data); 
+      const embedding = Array.from(output.data);
       console.log(embedding);
 
       self.postMessage({
@@ -91,11 +91,11 @@ self.addEventListener('message', async (event) => {
         self.postMessage(x);
       });
       const system_prompt = "Context information is below.\n\n" +
-              "---------------------\n" +
-              data.context + "\n" +
-              "---------------------\n" +
-              "Given the context information and not prior knowledge, answer the query.\n";
-        
+        "---------------------\n" +
+        data.context + "\n" +
+        "---------------------\n" +
+        "Given the context information and not prior knowledge, answer the query.\n";
+
       const user_prompt = "Query: " + data.query + "\nAnswer: ";
       console.log("System prompt:", system_prompt);
       console.log("User prompt:", user_prompt);

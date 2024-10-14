@@ -11,7 +11,7 @@ interface Chunk {
     text: string;
 }
 
-export async function recursiveChunkingWithPages(textWithPages: TextWithPage[], chunkSize = 800, chunkOverlap = 300): Promise<Chunk[]> {
+export async function recursiveChunkingWithPages(textWithPages: TextWithPage[], chunkSize = 1024, chunkOverlap = 300): Promise<Chunk[]> {
     let allText = "";
     const pageBoundaries: [number, number, number][] = [];
     let currentPosition = 0;

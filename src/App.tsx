@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getDB, initSchema, countRows, seedDb, seedSingleDb, search, clearDb, getDbData } from './utils/db';
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
@@ -138,11 +137,12 @@ function App() {
         const embeddings = json.chunks;
         const elements = embeddings.length;
         setProgress(0);
-        for (let i = 0; i < embeddings.length; i++) {
-          const embedding = embeddings[i];
-          await seedDb(db.current, [embedding]);
-          setProgress((i + 1) / elements * 100);
-        }
+        await seedDb(db.current, embeddings);
+        // for (let i = 0; i < embeddings.length; i++) {
+        //   const embedding = embeddings[i];
+        //   await seedDb(db.current, [embedding]);
+        //   setProgress((i + 1) / elements * 100);
+        // }
         setProgress(100);
         console.log("Upload complete");
         const t1 = performance.now();
@@ -176,17 +176,18 @@ function App() {
     console.log(files)
     const totalFiles = files.length;
     setProgress(0);
+    const fileElements: any[] = [];
 
     const t1 = performance.now();
 
     for (let index = 0; index < totalFiles; index++) {
       const file = files[index];
       if (file instanceof File) {
-        await processFile(file);
-        setProgress((index + 1) / totalFiles * 100);
+        await processFile(file, fileElements);
       }
     }
 
+    await seedDb(db.current, fileElements);
     setProgress(100);
     console.log("Upload complete");
     const rows = await countRows(db.current, "embeddings");
@@ -196,7 +197,7 @@ function App() {
     console.log(`Time taken for uploading: ${((t2 - t1) / 1000).toFixed(2)} seconds`);
   }
 
-  function processFile(file: File) {
+  async function processFile(file: File, fileElements: any[]) {
     return new Promise<void>((resolve, reject) => {
       const reader = new FileReader();
 
@@ -204,9 +205,8 @@ function App() {
         try {
           const content = e.target?.result as string;
           const embedding = JSON.parse(content);
-
           if (embedding && typeof embedding === 'object') {
-            await seedDb(db.current, [embedding]);
+            fileElements.push(embedding);
           } else {
             console.error(`File ${file.name} does not contain a valid embedding object.`);
           }
