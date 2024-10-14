@@ -32,7 +32,7 @@ function App() {
   const [progress, setProgress] = React.useState(0);
   const [dbRows, setDbRows] = useState<number>(0);
   const [documentContext, setDocumentContext] = useState<string>('');
-  const [answerResult, setAnswerResult] = useState<string | null>(null);
+  const [answerResult, setAnswerResult] = useState<any>('');
   const initailizing = useRef<boolean>(false);
 
   const worker = useRef<Worker | null>(null);
@@ -93,7 +93,7 @@ function App() {
           break;
         }
         case "text_generation_complete": {
-          setAnswerResult(e.data.output?.content || '');
+          setAnswerResult(e.data.output);
           break;
         }
       }

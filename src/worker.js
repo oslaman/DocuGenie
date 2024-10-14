@@ -96,21 +96,38 @@ self.addEventListener('message', async (event) => {
         "---------------------\n" +
         "Given the context information and not prior knowledge, answer the query.\n";
 
-      const user_prompt = "Query: " + data.query + "\nAnswer: ";
-      console.log("System prompt:", system_prompt);
-      console.log("User prompt:", user_prompt);
+      const user_prompt = "Query: " + data.query + "\n Your answer: ";
       const messages = [
         { role: 'system', content: system_prompt },
         { role: 'user', content: user_prompt },
       ];
-      let output = await generator.chat.completions.create({
-        messages,
-      });
 
+      const request = {
+        stream: true,
+        stream_options: { insclude_usage: true },
+        messages,
+        logprobs: true,
+        top_logprobs: 2,
+      }
+
+      const asyncChunkGenerator = await generator.chat.completions.create(request);
+      let message = "";
+      for await (const chunk of asyncChunkGenerator) {
+        message += chunk.choices[0]?.delta?.content || "";
+        if (chunk.usage) {
+          console.log(chunk.usage);
+        }
+        self.postMessage({
+          status: 'text_generation_complete',
+          output: message,
+        });
+      }
+      
       self.postMessage({
         status: 'text_generation_complete',
-        output: output.choices[0].message,
+        output: await generator.getMessage(),
       });
+
       const t1 = performance.now();
       console.log(`Text generation completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
       break;
