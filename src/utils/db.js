@@ -130,7 +130,8 @@ export const search = async (
 };
 
 export const clearDb = async (pg) => {
-    await pg.query(`truncate table embeddings;`);
+    await pg.query(`drop table if exists embeddings;`);
+    await initSchema(pg);
 };
 
 export const getDbData = async (pg) => {
