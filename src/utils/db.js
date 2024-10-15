@@ -24,7 +24,7 @@ export const initSchema = async (pg) => {
     await pg.exec(`
       create extension if not exists vector;
       create extension if not exists pg_trgm; -- Per BM25
-      drop table if exists embeddings;
+      -- drop table if exists embeddings;
 
       create table if not exists embeddings (
         id bigint primary key generated always as identity,
@@ -130,7 +130,8 @@ export const search = async (
 };
 
 export const clearDb = async (pg) => {
-    await pg.query(`truncate table embeddings;`);
+    await pg.query(`drop table if exists embeddings;`);
+    await initSchema(pg);
 };
 
 export const getDbData = async (pg) => {
