@@ -13,7 +13,7 @@ interface WorkerMessageEvent extends MessageEvent {
     };
   }
 
-const Home = () => {
+const Home: React.FC = () => {
     const [prompt, setPrompt] = useState<string>('');
     const [documentContext, setDocumentContext] = useState<string>('');
     const [answerResult, setAnswerResult] = useState<any>('');
@@ -104,9 +104,9 @@ const Home = () => {
               </blockquote>
             </div>
             <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0">Answer</h2>
-            <div className="answer-result" style={{ whiteSpace: 'pre-wrap' }}>
+            <p className="leading-7 [&:not(:first-child)]:mt-6">
               {answerResult}
-            </div>
+            </p>
           </section>
         </main>
       </div>

@@ -1,4 +1,5 @@
 import { PGliteWorker } from "@electric-sql/pglite/worker";
+import { ReteNetwork, Rule } from './rete-network';
 
 let dbInstance;
 
@@ -92,7 +93,65 @@ export const seedSingleDb = async (db, embeddings, batchSize = 500) => {
     console.log(`DB seed completed in ${((t2 - t1) / 1000).toFixed(2)} seconds`);
 }
 
+const rules = [
+    new Rule(
+        [(fact) => fact.query.includes('integrity') || fact.query.includes('trust')],
+        (fact) => {fact.pageNumbers.push(69); console.log("Log effettuato con successo");},
+        'Checks if the query contains "integrity" or "trust"'
+    ),
+    new Rule(
+        [(fact) => fact.query.includes('food') || fact.query.includes('delicious')],
+        (fact) => fact.pageNumbers.push(2),
+        'Checks if the query contains "food" or "delicious"'
+    ),
+    // Condizione basata su pattern regex
+    new Rule(
+        [(fact) => /integrity|trust/.test(fact.query)],
+        (fact) => fact.pageNumbers.push(27),
+        'Checks if the query contains "integrity" or "trust"'
+    ),
+    // Condizione basata su lunghezza della query
+    new Rule(
+        [(fact) => fact.query.length > 50],
+        (fact) => fact.pageNumbers.push(10),
+        'Checks if the query is longer than 50 characters'
+    ),
+    // Condizione basata su parole chiave multiple
+    new Rule(
+        [(fact) => fact.query.includes('food') && fact.query.includes('delicious')],
+        (fact) => fact.pageNumbers.push(2),
+        'Checks if the query contains both "food" and "delicious"'
+    ),
+    // Condizione basata su valori numerici
+    new Rule(
+        [(fact) => /\d+/.test(fact.query) && parseInt(fact.query.match(/\d+/)[0], 10) > 100],
+        (fact) => fact.pageNumbers.push(15),
+        'Checks if the query contains a number greater than 100'
+    ),
+    // Condizione basata su data e ora
+    new Rule(
+        [(fact) => /\d{4}-\d{2}-\d{2}/.test(fact.query)],
+        (fact) => fact.pageNumbers.push(20),
+        'Checks if the query contains a date in the format YYYY-MM-DD'
+    ),
+    // Condizione basata su presenza di caratteri speciali
+    new Rule(
+        [(fact) => /[@#$%^&*]/.test(fact.query)],
+        (fact) => fact.pageNumbers.push(25),
+        'Checks if the query contains special characters'
+    ),
+    // Condizione basata su sinonimi
+    new Rule(
+        [(fact) => /happy|joyful|content/.test(fact.query)],
+        (fact) => fact.pageNumbers.push(30),
+        'Checks if the query contains synonyms for "happy", "joyful", or "content"'
+    ),
+];
 
+const reteNetwork = new ReteNetwork();
+for (const rule of rules) {
+    reteNetwork.addRule(rule);
+}
 
 export const search = async (
     pg,
@@ -101,15 +160,39 @@ export const search = async (
     match_threshold = 0.8,
     limit = 3,
 ) => {
-    const vectorResults = await pg.query(
-        `
-      select * from embeddings
-      where embeddings.embedding <#> $1 < $2
-      order by embeddings.embedding <#> $1
-      limit $3;
-      `,
-        [JSON.stringify(embedding), -Number(match_threshold), Number(limit)],
-    );
+    const fact = { query, pageNumbers: [] };
+    reteNetwork.addFact(fact);
+    const { pageNumbers } = fact;
+
+    console.log('Page Numbers:', pageNumbers);
+    console.log('Embedding:', embedding);
+    console.log('Query:', query);
+
+    let vectorResults;
+    if (pageNumbers.length > 0) {
+        console.log('Using vector search with page', pageNumbers);
+        vectorResults = await pg.query(
+            `
+          select * from embeddings
+          where embeddings.page_id = ANY($1)
+          -- order by embeddings.embedding <#> $2
+          limit $2;
+          `,
+            [pageNumbers, Number(limit)],
+        );
+
+        console.table(vectorResults.rows);
+    } else {
+        vectorResults = await pg.query(
+            `
+          select * from embeddings
+          where embeddings.embedding <#> $1 < $2
+          order by embeddings.embedding <#> $1
+          limit $3;
+          `,
+            [JSON.stringify(embedding), -Number(match_threshold), Number(limit)],
+        );
+    }
 
     const bm25Results = await pg.query(
         `

@@ -275,6 +275,12 @@ const Settings = () => {
                         </CardContent>
                     </Card>
                 </section>
+                <section className="dashboard-container w-full flex flex-row gap-4">
+                    <form action="">
+                        <label htmlFor="rule-title"></label>
+                        <input type="text" id='rule-title' name='rule-title' />
+                    </form>
+                </section>
             </main>
         </div>
     );
