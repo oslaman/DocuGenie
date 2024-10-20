@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { getDB, initSchema, countRows, seedDb, seedSingleDb, clearDb, getDbData } from '../utils/db';
+import { getDB, initSchema, countRows, seedDb, seedSingleDb, clearDb, getDbData, insertRootRuleNode, getAllRuleNodes } from '../utils/db';
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -12,7 +12,10 @@ import {
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress";
 import { recursiveChunkingWithPages, TextWithPage } from '../utils/chunking';
-
+import RulesTree from '@/components/RulesTree';
+import { RuleNode } from '@/utils/rete-network';
+import { RuleForm } from '@/components/RuleForm';
+import { RulesContext } from '@/components/context';
 
 import '../App.css';
 
@@ -24,9 +27,18 @@ interface WorkerMessageEvent extends MessageEvent {
     };
 }
 
+export interface Rules {
+    id: string;
+    rule: RuleNode;
+}
+
 const Settings = () => {
     const [progress, setProgress] = React.useState(0);
     const [dbRows, setDbRows] = useState<number>(0);
+    const [rules, setRulesItems] = useState<Rules[]>([]);
+    const setRules = (value: Rules[]) => {
+        setRulesItems(value);
+    }
     const initailizing = useRef<boolean>(false);
 
     const worker = useRef<Worker | null>(null);
@@ -39,6 +51,9 @@ const Settings = () => {
             db.current = await getDB();
             await initSchema(db.current);
             const count = await countRows(db.current, "embeddings");
+            const allNodes = await getAllRuleNodes(db.current);
+            setRules([]);
+            setRules(allNodes.map((node) => ({ id: node.id, rule: node.rule })));
             setDbRows(count);
             console.log(`Found ${count} rows`);
         };
@@ -275,11 +290,11 @@ const Settings = () => {
                         </CardContent>
                     </Card>
                 </section>
-                <section className="dashboard-container w-full flex flex-row gap-4">
-                    <form action="">
-                        <label htmlFor="rule-title"></label>
-                        <input type="text" id='rule-title' name='rule-title' />
-                    </form>
+                <section className="dashboard-container w-full flex-col gap-4">
+                    <RulesContext.Provider value={{rules, setRules}}>
+                        <RuleForm />
+                        <RulesTree />
+                    </RulesContext.Provider>
                 </section>
             </main>
         </div>

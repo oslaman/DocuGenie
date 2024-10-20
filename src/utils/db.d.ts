@@ -19,3 +19,17 @@ export interface Embedding {
   export function clearDb(db: any): Promise<void>;
   export function getDbData(db: any): Promise<any[]>;
   export function seedSingleDb(db: any, embeddings: Embedding[]): Promise<void>;
+  export function getAllRuleNodes(db: any): Promise<RuleNode[]>;
+  export function getRuleTree(db: any, rootId: number): Promise<RuleNode[]>;
+  export function insertRootRuleNode(db: any, ruleNode: RuleNode): Promise<void>;
+  export function insertChildRuleNode(db: any, ruleNode: RuleNode, parentId: string): Promise<void>;
+  export function insertTreeWithTransaction(db: any, rootNode: RuleNode): Promise<void>;
+  export function collectNodes(node: RuleNode, nodes: RuleNode[]): void;
+  export function batchInsertNodes(db: any, nodes: RuleNode[]): Promise<void>;
+  export function getRootRuleNodes(db: any): Promise<RuleNode[]>;
+  export function getChildRuleNodes(db: any, parentId: string): Promise<RuleNode[]>;
+  export function addRuleNode(db: any, ruleNode: RuleNode, parentId: string | null): Promise<void>;
+  export function removeRuleNode(db: any, nodeId: string): Promise<void>;
+  export function updateRuleNode(db: any, nodeId: string, updatedFields: any): Promise<void>;
+  export function findNodeById(db: any, nodeId: string): Promise<RuleNode>;
+  export function getTree(db: any): Promise<RuleNode[]>;

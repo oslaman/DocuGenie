@@ -1,7 +1,7 @@
 import { PGliteWorker } from "@electric-sql/pglite/worker";
-import { ReteNetwork, Rule } from './rete-network';
+import { RuleNode } from "@/utils/rete-network";
 
-let dbInstance;
+let dbInstance = null;
 
 export async function getDB() {
     if (dbInstance) {
@@ -25,7 +25,9 @@ export const initSchema = async (pg) => {
     await pg.exec(`
       create extension if not exists vector;
       create extension if not exists pg_trgm; -- Per BM25
+      create extension if not exists ltree;
       -- drop table if exists embeddings;
+      -- drop table if exists rules;
 
       create table if not exists embeddings (
         id bigint primary key generated always as identity,
@@ -33,6 +35,16 @@ export const initSchema = async (pg) => {
         chunk_id integer,
         content text not null,
         embedding vector (384)
+      );
+
+      create table if not exists rules (
+        id serial primary key,
+        name text not null,
+        conditions text not null,
+        action text not null,
+        salience integer not null,
+        parent_id integer references rules(id),
+        created_at timestamp default current_timestamp
       );
 
       create index on embeddings using hnsw (embedding vector_ip_ops);
@@ -70,6 +82,51 @@ export const seedDb = async (db, embeddings, batchSize = 500) => {
     }
 }
 
+export async function insertRootRuleNode(db, ruleNode) {
+    const jsonRule = JSON.parse(ruleNode.toJSON());
+    const conditions = JSON.stringify(jsonRule.conditions);
+
+    console.log('Inserting rule:', jsonRule);
+
+    const res = await db.query(
+        `INSERT INTO rules (name, conditions, action, salience) VALUES ($1, $2, $3, $4) RETURNING id`,
+        [
+            jsonRule.name,
+            conditions,
+            jsonRule.action,
+            jsonRule.salience
+        ]
+    );
+
+    const id = res.rows[0].id;
+
+    for (const child of ruleNode.children) {
+        await insertChildRuleNode(db, child, id);
+    }
+}
+
+export async function insertChildRuleNode(db, ruleNode, parentId) {
+    const jsonRule = JSON.parse(ruleNode.toJSON());
+    const conditions = JSON.stringify(jsonRule.conditions);
+
+    console.log('Inserting rule:', jsonRule);
+
+    await db.query(
+        `INSERT INTO rules (name, conditions, action, salience, parent_id) VALUES ($1, $2, $3, $4, $5)`,
+        [
+            jsonRule.name,
+            conditions,
+            jsonRule.action,
+            jsonRule.salience,
+            parentId
+        ]
+    );
+
+    for (const child of ruleNode.children) {
+        await insertChildRuleNode(db, child, parentId);
+    }
+}
+
 export const seedSingleDb = async (db, embeddings, batchSize = 500) => {
     console.log("Seeding DB: ", embeddings);
     const t1 = performance.now();
@@ -93,66 +150,6 @@ export const seedSingleDb = async (db, embeddings, batchSize = 500) => {
     console.log(`DB seed completed in ${((t2 - t1) / 1000).toFixed(2)} seconds`);
 }
 
-const rules = [
-    new Rule(
-        [(fact) => fact.query.includes('integrity') || fact.query.includes('trust')],
-        (fact) => {fact.pageNumbers.push(69); console.log("Log effettuato con successo");},
-        'Checks if the query contains "integrity" or "trust"'
-    ),
-    new Rule(
-        [(fact) => fact.query.includes('food') || fact.query.includes('delicious')],
-        (fact) => fact.pageNumbers.push(2),
-        'Checks if the query contains "food" or "delicious"'
-    ),
-    // Condizione basata su pattern regex
-    new Rule(
-        [(fact) => /integrity|trust/.test(fact.query)],
-        (fact) => fact.pageNumbers.push(27),
-        'Checks if the query contains "integrity" or "trust"'
-    ),
-    // Condizione basata su lunghezza della query
-    new Rule(
-        [(fact) => fact.query.length > 50],
-        (fact) => fact.pageNumbers.push(10),
-        'Checks if the query is longer than 50 characters'
-    ),
-    // Condizione basata su parole chiave multiple
-    new Rule(
-        [(fact) => fact.query.includes('food') && fact.query.includes('delicious')],
-        (fact) => fact.pageNumbers.push(2),
-        'Checks if the query contains both "food" and "delicious"'
-    ),
-    // Condizione basata su valori numerici
-    new Rule(
-        [(fact) => /\d+/.test(fact.query) && parseInt(fact.query.match(/\d+/)[0], 10) > 100],
-        (fact) => fact.pageNumbers.push(15),
-        'Checks if the query contains a number greater than 100'
-    ),
-    // Condizione basata su data e ora
-    new Rule(
-        [(fact) => /\d{4}-\d{2}-\d{2}/.test(fact.query)],
-        (fact) => fact.pageNumbers.push(20),
-        'Checks if the query contains a date in the format YYYY-MM-DD'
-    ),
-    // Condizione basata su presenza di caratteri speciali
-    new Rule(
-        [(fact) => /[@#$%^&*]/.test(fact.query)],
-        (fact) => fact.pageNumbers.push(25),
-        'Checks if the query contains special characters'
-    ),
-    // Condizione basata su sinonimi
-    new Rule(
-        [(fact) => /happy|joyful|content/.test(fact.query)],
-        (fact) => fact.pageNumbers.push(30),
-        'Checks if the query contains synonyms for "happy", "joyful", or "content"'
-    ),
-];
-
-const reteNetwork = new ReteNetwork();
-for (const rule of rules) {
-    reteNetwork.addRule(rule);
-}
-
 export const search = async (
     pg,
     embedding,
@@ -160,25 +157,21 @@ export const search = async (
     match_threshold = 0.8,
     limit = 3,
 ) => {
-    const fact = { query, pageNumbers: [] };
-    reteNetwork.addFact(fact);
-    const { pageNumbers } = fact;
+    const pages = [];
 
-    console.log('Page Numbers:', pageNumbers);
-    console.log('Embedding:', embedding);
-    console.log('Query:', query);
+    if (pages.length === 0 && Array.isArray(pages)) {
+        console.error('No page numbers found');
+    }
 
     let vectorResults;
-    if (pageNumbers.length > 0) {
-        console.log('Using vector search with page', pageNumbers);
+    if (pages.length > 0 && Array.isArray(pages)) {
+        console.log('Using vector search with page', pages);
         vectorResults = await pg.query(
             `
           select * from embeddings
           where embeddings.page_id = ANY($1)
-          -- order by embeddings.embedding <#> $2
-          limit $2;
           `,
-            [pageNumbers, Number(limit)],
+            [pages],
         );
 
         console.table(vectorResults.rows);
@@ -209,7 +202,9 @@ export const search = async (
         .sort((a, b) => (a.distance || 0) - (b.distance || 0) + (b.rank || 0) - (a.rank || 0))
         .slice(0, limit);
 
-    return combinedResults;
+    const formattedChunks = combinedResults.map(result => `- ${result.content}`);
+
+    return formattedChunks;
 };
 
 export const clearDb = async (pg) => {
@@ -221,3 +216,81 @@ export const getDbData = async (pg) => {
     const res = await pg.query(`SELECT * FROM embeddings;`);
     return res.rows;
 };
+
+export async function getAllRuleNodes(pg) {
+    const query = `
+        WITH RECURSIVE rule_tree AS (
+            SELECT id, name, conditions, action, salience, parent_id
+            FROM rules
+            WHERE parent_id IS NULL
+            UNION ALL
+            SELECT r.id, r.name, r.conditions, r.action, r.salience, r.parent_id
+            FROM rules r
+            INNER JOIN rule_tree rt ON r.parent_id = rt.id
+        )
+        SELECT * FROM rule_tree ORDER BY id;
+    `;
+    const res = await pg.query(query);
+
+    const nodes = {};
+    res.rows.forEach(row => {
+        nodes[row.id] = new RuleNode(
+            row.name,
+            JSON.parse(row.conditions).map(condStr => new Function('facts', `return ${condStr}`)),
+            new Function('facts', row.action),
+            row.salience
+        );
+    });
+
+    res.rows.forEach(row => {
+        if (row.parent_id) {
+            nodes[row.parent_id].children.push(nodes[row.id]);
+        }
+    });
+
+    return Object.entries(nodes).map(([id, ruleNode]) => ({
+        id: id,
+        rule: ruleNode
+    }));
+}
+
+function collectNodes(node, nodes, parentId = null) {
+    node.parentId = parentId;
+    nodes.push(node);
+
+    node.children.forEach(child => collectNodes(child, nodes, node.id));
+}
+
+export async function insertTreeWithTransaction(db, rootNode) {
+    await db.query('BEGIN');
+
+    try {
+        const nodes = [];
+        collectNodes(rootNode, nodes);
+        await batchInsertNodes(db, nodes);
+
+        await db.query('COMMIT');
+    } catch (error) {
+        await db.query('ROLLBACK');
+        throw error;
+    }
+}
+
+async function batchInsertNodes(db, nodes) {
+    const values = [];
+    const params = [];
+
+    nodes.forEach((node, index) => {
+        const jsonRule = JSON.parse(node.toJSON());
+        const conditions = JSON.stringify(jsonRule.conditions);
+        values.push(`($${index * 5 + 1}, $${index * 5 + 2}, $${index * 5 + 3}, $${index * 5 + 4}, $${index * 5 + 5})`);
+        params.push(jsonRule.name, conditions, jsonRule.action, jsonRule.salience, node.parentId || null);
+    });
+
+    const query = `
+        INSERT INTO rules (name, conditions, action, salience, parent_id)
+        VALUES ${values.join(', ')}
+    `;
+
+    await db.query(query, params);
+}
