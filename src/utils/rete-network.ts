@@ -51,8 +51,8 @@ export class RuleNode {
     toJSON(): string {
         return JSON.stringify({
             name: this.name,
-            conditions: this.conditions.map(condition => condition.toString()),
-            action: this.action.toString(),
+            conditions: this.conditions.map(condition => eval(condition.toString())),
+            action: eval(this.action.toString()),
             salience: this.salience
         });
     }
@@ -65,7 +65,7 @@ export class RuleNode {
     }
 }
 
-class RulesEngine {
+export class RulesEngine {
     rootRules: RuleNode[];
 
     constructor() {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -15,21 +15,14 @@ import {
 import {
     Select,
     SelectContent,
-    SelectGroup,
     SelectItem,
-    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input";
-import { getRootRuleNodes, getDB, getAllRuleNodes, insertRootRuleNode, insertChildRuleNode } from "@/utils/db";
+import { getDB, getAllRuleNodes, insertRootRuleNode, insertChildRuleNode } from "@/utils/db";
 import { RuleNode } from "@/utils/rete-network";
 import { useRulesContext } from "@/components/context";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
-import { CaretSortIcon, CheckIcon } from "@radix-ui/react-icons";
-
 const formSchema = z.object({
     description: z.string().min(2),
     rule_option: z
@@ -63,7 +56,8 @@ export function RuleForm() {
         if (values.previous_rule === '') {
             switch (values.rule_option) {
                 case "keyword":
-                    rule = new RuleNode(values.description, [(facts: Record<string, any>) => facts['content'].includes(values.keyword)], (facts) => { facts['pages'].push(100); }, 0);
+                    console.log('Keyword: ', values.keyword);
+                    rule = new RuleNode(values.description, [(facts: Record<string, any>) => facts['content'].includes(values.keyword)], (facts) => { facts['pages'].push(values.page); }, 0);
                     insertRootRuleNode(db.current, rule);
                     const allNodes = await getAllRuleNodes(db.current);
                     rules.splice(0, rules.length);
@@ -74,7 +68,7 @@ export function RuleForm() {
                     break;
             }
         } else {
-            rule = new RuleNode(values.description, [(facts: Record<string, any>) => facts['content'].includes(values.keyword)], (facts) => { facts['pages'].push(100); }, 0);
+            rule = new RuleNode(values.description, [(facts: Record<string, any>) => facts['content'].includes(values.keyword)], (facts) => { facts['pages'].push(values.page); }, 0);
             insertChildRuleNode(db.current, rule, values.previous_rule);
             const allNodes = await getAllRuleNodes(db.current);
             rules.splice(0, rules.length);

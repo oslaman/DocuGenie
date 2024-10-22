@@ -1,5 +1,6 @@
 import { PGliteWorker } from "@electric-sql/pglite/worker";
 import { RuleNode } from "@/utils/rete-network";
+import { RulesEngine } from "@/utils/rete-network";
 
 let dbInstance = null;
 
@@ -9,15 +10,16 @@ export async function getDB() {
     }
     const pg = new PGliteWorker(
         new Worker(new URL('./pglite-worker.js', import.meta.url), {
-          type: 'module',
+            type: 'module',
         }),
         {
-          dataDir: 'idb://rag-app',
+            dataDir: 'idb://rag-app',
         }
-      )
-    
+    )
+
     await pg.waitReady;
     dbInstance = pg;
+
     return pg;
 }
 
@@ -28,6 +30,7 @@ export const initSchema = async (pg) => {
       create extension if not exists ltree;
       -- drop table if exists embeddings;
       -- drop table if exists rules;
+      drop table if exists foo;
 
       create table if not exists embeddings (
         id bigint primary key generated always as identity,
@@ -61,14 +64,14 @@ export const seedDb = async (db, embeddings, batchSize = 500) => {
     console.log("Seeding DB: ", embeddings);
     for (let i = 0; i < embeddings.length; i += batchSize) {
         const batch = embeddings.slice(i, i + batchSize);
-        const values = batch.map((embedding, index) => 
+        const values = batch.map((embedding, index) =>
             `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4})`
         ).join(", ");
-        
+
         const params = batch.flatMap(embedding => [
-            embedding.page, 
-            embedding.index, 
-            embedding.text, 
+            embedding.page,
+            embedding.index,
+            embedding.text,
             JSON.stringify(embedding.embedding_of_chunk)
         ]);
 
@@ -132,10 +135,10 @@ export const seedSingleDb = async (db, embeddings, batchSize = 500) => {
     const t1 = performance.now();
     for (let i = 0; i < embeddings.length; i += batchSize) {
         const batch = embeddings.slice(i, i + batchSize);
-        const values = batch.map((embedding, index) => 
+        const values = batch.map((embedding, index) =>
             `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4})`
         ).join(", ");
-        
+
         const params = batch.flatMap(embedding => [embedding.content.page, embedding.content.index, embedding.content.text, JSON.stringify(embedding.embedding)]);
 
         await db.query(
@@ -157,21 +160,30 @@ export const search = async (
     match_threshold = 0.8,
     limit = 3,
 ) => {
-    const pages = [];
+    const fact = {content: query, pages: []};
+    const rules = await getRootRules(pg);
+    console.log('Rules: ', rules);
+    const engine = new RulesEngine();
 
-    if (pages.length === 0 && Array.isArray(pages)) {
+    rules.forEach(rule => engine.addRootRule(rule));
+
+    engine.evaluate(fact);
+
+    console.log('Fact: ', fact);
+
+    if (fact.pages.length === 0 && Array.isArray(fact.pages)) {
         console.error('No page numbers found');
     }
 
     let vectorResults;
-    if (pages.length > 0 && Array.isArray(pages)) {
-        console.log('Using vector search with page', pages);
+    if (fact.pages.length > 0 && Array.isArray(fact.pages)) {
+        console.log('Using vector search with page', fact.pages);
         vectorResults = await pg.query(
             `
           select * from embeddings
           where embeddings.page_id = ANY($1)
           `,
-            [pages],
+            [fact.pages],
         );
 
         console.table(vectorResults.rows);
@@ -293,4 +305,48 @@ async function batchInsertNodes(db, nodes) {
     `;
 
     await db.query(query, params);
+}
+
+export async function getRootRules(pg) {
+    const query = `
+        WITH RECURSIVE rule_tree AS (
+            SELECT id, name, conditions, action, salience, parent_id
+            FROM rules
+            WHERE parent_id IS NULL
+            UNION ALL
+            SELECT r.id, r.name, r.conditions, r.action, r.salience, r.parent_id
+            FROM rules r
+            INNER JOIN rule_tree rt ON r.parent_id = rt.id
+        )
+        SELECT * FROM rule_tree ORDER BY id;
+    `;
+    const res = await pg.query(query);
+
+    // Log the result to inspect the data
+    console.log("Query Result: ", res.rows);
+
+    const nodes = {};
+    res.rows.forEach(row => {
+        nodes[row.id] = new RuleNode(
+            row.name,
+            JSON.parse(row.conditions).map(condStr => new Function('facts', `return ${condStr}`)),
+            new Function('facts', row.action),
+            row.salience
+        );
+        nodes[row.id].parentId = row.parent_id;
+    });
+
+    res.rows.forEach(row => {
+        if (row.parent_id) {
+            nodes[row.parent_id].children.push(nodes[row.id]);
+        }
+    });
+
+    // Log the nodes to inspect the tree structure
+    console.log("Nodes: ", nodes);
+
+    const rootNodes = Object.values(nodes).filter(node => node.parentId === null);
+    console.log("Root Nodes: ", rootNodes);
+
+    return rootNodes;
 }

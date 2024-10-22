@@ -13,7 +13,7 @@ worker({
       extensions: {
          vector,
          pg_trgm,
-         ltree
+         ltree,
       }
     })
     console.log('worker init: pglite', pglite)
