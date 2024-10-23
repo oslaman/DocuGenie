@@ -1,7 +1,7 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { MoreHorizontal, ArrowUpDown } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
- 
+import { getDB } from "@/utils/db"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -11,8 +11,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { removeRuleNode } from "@/utils/db"
 
 export type RuleItems = {
+  [x: string]: any
   id: string
   name: string
   salience: number
@@ -42,6 +44,10 @@ export const columns: ColumnDef<RuleItems>[] = [
         enableSorting: false,
         enableHiding: false,
       },
+      {
+        accessorKey: "id",
+        header: "ID",
+      },
   {
     accessorKey: "name",
     header: ({ column }) => {
@@ -58,16 +64,44 @@ export const columns: ColumnDef<RuleItems>[] = [
   },
   {
     accessorKey: "salience",
-    header: "Salience",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Priority
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
+  },
+  {
+    accessorKey: "page",
+    header: "Page",
+  },
+  {
+    accessorKey: "parent",
+    header: "Parent",
   },
   {
     accessorKey: "children",
-    header: "Children",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Children #
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
   },
   {
     id: "actions",
     cell: ({ row }) => {
-      const payment = row.original
+      const rule = row.original
  
       return (
         <DropdownMenu>
@@ -80,13 +114,29 @@ export const columns: ColumnDef<RuleItems>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(payment.id)}
+              onClick={() => navigator.clipboard.writeText(rule.id)}
             >
-              Copy payment ID
+              Copy rule ID
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                navigator.clipboard.writeText(rule.id);
+              }}
+            >
+              Edit rule
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={async () => {
+                console.log(rule.id);
+                const db = await getDB();
+                await removeRuleNode(db, rule.id);
+              }}
+
+              className="text-red-500"
+            >
+              Delete rule
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )

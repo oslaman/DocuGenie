@@ -18,6 +18,7 @@ import { RuleForm } from '@/components/RuleForm';
 import { RulesContext } from '@/components/context';
 
 import '../App.css';
+import { SidebarNav } from '@/components/sidebar-nav';
 
 interface WorkerMessageEvent extends MessageEvent {
     data: {
@@ -29,8 +30,20 @@ interface WorkerMessageEvent extends MessageEvent {
 
 export interface Rules {
     id: string;
+    parent: string;
     rule: RuleNode;
 }
+
+const sidebarNavItems = [
+    {
+      title: "Documents",
+      href: "/settings/documents",
+    },
+    {
+      title: "Rules",
+      href: "/settings/rules",
+    },
+  ];
 
 const Settings = () => {
     const [progress, setProgress] = React.useState(0);
@@ -52,8 +65,9 @@ const Settings = () => {
             await initSchema(db.current);
             const count = await countRows(db.current, "embeddings");
             const allNodes = await getAllRuleNodes(db.current);
+            console.log("All nodes: ", allNodes.map((node) => JSON.parse(node.rule.toJSON()).conditions));
             setRules([]);
-            setRules(allNodes.map((node) => ({ id: node.id, rule: node.rule })));
+            setRules(allNodes.map((node) => ({ id: node.id, rule: node.rule, parent: node.parent || '-' })));
             setDbRows(count);
             console.log(`Found ${count} rows`);
         };
@@ -247,9 +261,11 @@ const Settings = () => {
 
 
     return (
-        <div className="app-container">
+        <div className="app-container flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
+            {/* <aside className="-mx-4 lg:w-1/5">
+                <SidebarNav items={sidebarNavItems} />
+            </aside> */}
             <main className="app-main">
-                <h1>Settings</h1>
                 <section className="dashboard-container w-full flex flex-row gap-4">
                     <div className='flex flex-col gap-4 w-full'>
                         <div className="file-upload">

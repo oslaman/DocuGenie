@@ -2,6 +2,7 @@ import { PGliteWorker } from "@electric-sql/pglite/worker";
 import { RuleNode } from "@/utils/rete-network";
 import { RulesEngine } from "@/utils/rete-network";
 
+
 let dbInstance = null;
 
 export async function getDB() {
@@ -88,7 +89,8 @@ export const seedDb = async (db, embeddings, batchSize = 500) => {
 export async function insertRootRuleNode(db, ruleNode) {
     const jsonRule = JSON.parse(ruleNode.toJSON());
     const conditions = JSON.stringify(jsonRule.conditions);
-
+    console.log("JSON Rule: ", jsonRule);
+    console.log("Conditions: ", conditions);
     console.log('Inserting rule:', jsonRule);
 
     const res = await db.query(
@@ -113,6 +115,7 @@ export async function insertChildRuleNode(db, ruleNode, parentId) {
     const conditions = JSON.stringify(jsonRule.conditions);
 
     console.log('Inserting rule:', jsonRule);
+    console.log('Parent ID: ', parentId);
 
     await db.query(
         `INSERT INTO rules (name, conditions, action, salience, parent_id) VALUES ($1, $2, $3, $4, $5)`,
@@ -160,30 +163,29 @@ export const search = async (
     match_threshold = 0.8,
     limit = 3,
 ) => {
-    const fact = {content: query, pages: []};
     const rules = await getRootRules(pg);
-    console.log('Rules: ', rules);
     const engine = new RulesEngine();
 
     rules.forEach(rule => engine.addRootRule(rule));
 
-    engine.evaluate(fact);
-
-    console.log('Fact: ', fact);
-
-    if (fact.pages.length === 0 && Array.isArray(fact.pages)) {
-        console.error('No page numbers found');
+    let pages;
+    try {
+        pages = [engine.evaluate({query: query})];
+    } catch (error) {
+        console.error('Error evaluating rules: ', error);
     }
+    console.log(typeof pages, pages);
+    console.log('Pages: ', pages);
 
     let vectorResults;
-    if (fact.pages.length > 0 && Array.isArray(fact.pages)) {
-        console.log('Using vector search with page', fact.pages);
+    if (pages.length > 0) {
+        console.log('Using vector search with page', pages);
         vectorResults = await pg.query(
             `
           select * from embeddings
           where embeddings.page_id = ANY($1)
           `,
-            [fact.pages],
+            [pages],
         );
 
         console.table(vectorResults.rows);
@@ -248,63 +250,24 @@ export async function getAllRuleNodes(pg) {
     res.rows.forEach(row => {
         nodes[row.id] = new RuleNode(
             row.name,
-            JSON.parse(row.conditions).map(condStr => new Function('facts', `return ${condStr}`)),
-            new Function('facts', row.action),
+            JSON.parse(row.conditions),
+            row.action,
             row.salience
         );
+        nodes[row.id].parentId = row.parent_id;
     });
 
     res.rows.forEach(row => {
         if (row.parent_id) {
-            nodes[row.parent_id].children.push(nodes[row.id]);
+            nodes[row.parent_id].children.push(nodes[row.parent_id]);
         }
     });
 
     return Object.entries(nodes).map(([id, ruleNode]) => ({
         id: id,
-        rule: ruleNode
+        rule: ruleNode,
+        parent: ruleNode.parentId
     }));
-}
-
-function collectNodes(node, nodes, parentId = null) {
-    node.parentId = parentId;
-    nodes.push(node);
-
-    node.children.forEach(child => collectNodes(child, nodes, node.id));
-}
-
-export async function insertTreeWithTransaction(db, rootNode) {
-    await db.query('BEGIN');
-
-    try {
-        const nodes = [];
-        collectNodes(rootNode, nodes);
-        await batchInsertNodes(db, nodes);
-
-        await db.query('COMMIT');
-    } catch (error) {
-        await db.query('ROLLBACK');
-        throw error;
-    }
-}
-
-async function batchInsertNodes(db, nodes) {
-    const values = [];
-    const params = [];
-
-    nodes.forEach((node, index) => {
-        const jsonRule = JSON.parse(node.toJSON());
-        const conditions = JSON.stringify(jsonRule.conditions);
-        values.push(`($${index * 5 + 1}, $${index * 5 + 2}, $${index * 5 + 3}, $${index * 5 + 4}, $${index * 5 + 5})`);
-        params.push(jsonRule.name, conditions, jsonRule.action, jsonRule.salience, node.parentId || null);
-    });
-
-    const query = `
-        INSERT INTO rules (name, conditions, action, salience, parent_id)
-        VALUES ${values.join(', ')}
-    `;
-
-    await db.query(query, params);
 }
 
 export async function getRootRules(pg) {
@@ -322,15 +285,12 @@ export async function getRootRules(pg) {
     `;
     const res = await pg.query(query);
 
-    // Log the result to inspect the data
-    console.log("Query Result: ", res.rows);
-
     const nodes = {};
     res.rows.forEach(row => {
         nodes[row.id] = new RuleNode(
             row.name,
-            JSON.parse(row.conditions).map(condStr => new Function('facts', `return ${condStr}`)),
-            new Function('facts', row.action),
+            JSON.parse(row.conditions),
+            row.action,
             row.salience
         );
         nodes[row.id].parentId = row.parent_id;
@@ -342,11 +302,36 @@ export async function getRootRules(pg) {
         }
     });
 
-    // Log the nodes to inspect the tree structure
-    console.log("Nodes: ", nodes);
-
     const rootNodes = Object.values(nodes).filter(node => node.parentId === null);
-    console.log("Root Nodes: ", rootNodes);
-
     return rootNodes;
+}
+
+export async function removeRuleNode(db, nodeId) {
+    await db.query('BEGIN');
+
+    try {
+        const childNodes = await db.query(
+            `SELECT id FROM rules WHERE parent_id = $1`,
+            [nodeId]
+        );
+
+        for (const child of childNodes.rows) {
+            await removeRuleNode(db, child.id);
+        }
+
+        await db.query(
+            `DELETE FROM rules WHERE id = $1`,
+            [nodeId]
+        );
+
+        await db.query('COMMIT');
+    } catch (error) {
+        await db.query('ROLLBACK');
+        console.error('Error removing rule node:', error);
+        throw error;
+    }
+}
+
+export async function updateRuleNode(db, nodeId, updatedFields) {
+    await db.query('UPDATE rules SET $1 WHERE id = $2', [updatedFields, nodeId]);
 }
