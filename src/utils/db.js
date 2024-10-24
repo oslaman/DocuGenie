@@ -335,3 +335,42 @@ export async function removeRuleNode(db, nodeId) {
 export async function updateRuleNode(db, nodeId, updatedFields) {
     await db.query('UPDATE rules SET $1 WHERE id = $2', [updatedFields, nodeId]);
 }
+
+export async function getRuleById(db, id) {
+    const query = `
+        WITH RECURSIVE rule_tree AS (
+            SELECT id, name, conditions, action, salience, parent_id
+            FROM rules
+            WHERE id = $1
+            UNION ALL
+            SELECT r.id, r.name, r.conditions, r.action, r.salience, r.parent_id
+            FROM rules r
+            INNER JOIN rule_tree rt ON r.parent_id = rt.id
+        )
+        SELECT * FROM rule_tree;
+    `;
+    const res = await db.query(query, [id]);
+
+    const nodes = {};
+    res.rows.forEach(row => {
+        nodes[row.id] = new RuleNode(row.name, JSON.parse(row.conditions), row.action, row.salience);
+        nodes[row.id].parentId = row.parent_id;
+    });
+
+    res.rows.forEach(row => {
+        if (row.parent_id && nodes[row.parent_id]) {
+            if (!nodes[row.parent_id].children) {
+                nodes[row.parent_id].children = [];
+            }
+            nodes[row.parent_id].children.push(nodes[row.id]);
+        } else {
+            console.warn(`Parent node not found for child with ID: ${row.id}`);
+        }
+    });
+
+    return Object.entries(nodes).map(([id, ruleNode]) => ({
+        id: id,
+        rule: ruleNode,
+        parent: ruleNode.parentId
+    }));
+}

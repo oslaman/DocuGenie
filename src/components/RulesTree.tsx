@@ -163,6 +163,10 @@ const RulesTree: React.FC = () => {
         fetchData();
     }, [rules]);
 
+    const onConnectEnd = (params: any) => {
+        console.log('Connect end', params);
+    };
+
     return (
         <React.Fragment>
             <DataTable columns={columns} data={tableData} />
@@ -173,6 +177,7 @@ const RulesTree: React.FC = () => {
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
+                    onConnectEnd={onConnectEnd}
                     connectionLineType={ConnectionLineType.SmoothStep}
                     fitView
                     zoomOnDoubleClick={true}

@@ -24,3 +24,4 @@ export interface Embedding {
   export function insertChildRuleNode(db: any, ruleNode: RuleNode, parentId: string): Promise<void>;
   export function removeRuleNode(db: any, nodeId: string): Promise<void>;
   export function updateRuleNode(db: any, nodeId: string, updatedFields: any): Promise<void>;
+  export function getRuleById(db: any, id: string): Promise<any[]>;

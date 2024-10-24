@@ -121,6 +121,7 @@ export const columns: ColumnDef<RuleItems>[] = [
             <DropdownMenuItem
               onClick={() => {
                 navigator.clipboard.writeText(rule.id);
+                window.location.href = `/settings/rules/${rule.id}`;
               }}
             >
               Edit rule

@@ -12,22 +12,16 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import { Input } from "@/components/ui/input";
 import { getDB, getAllRuleNodes, insertRootRuleNode, insertChildRuleNode } from "@/utils/db";
 import { RuleNode } from "@/utils/rete-network";
 import { useRulesContext } from "@/components/context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandSeparator } from "@/components/ui/command";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-
+import { LogicEngine } from "json-logic-engine";
+import { Rules } from "@/pages/rules/rules-form";
 const formSchema = z.object({
     description: z.string().min(2),
     rule_option: z
@@ -40,13 +34,44 @@ const formSchema = z.object({
     priority: z.coerce.number().min(0),
 });
 
-export function RuleForm() {
+interface RuleFormProps {
+    rule: Rules;
+}
+
+export function RuleForm({ rule }: RuleFormProps) {
     const [open, setOpen] = useState(false)
     const [value, setValue] = useState("")
+    const [conditionOpen, setConditionOpen] = useState(false)
+    const [condition, setCondition] = useState("")
     const { rules, setRules } = useRulesContext();
     const db = useRef<any>(null);
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const logicEngine = new LogicEngine();
+    logicEngine.addMethod("find", ([str, keyword]: [string, string]) => new RegExp(`\\b${keyword}\\b`, 'i').test(str));
+
+    console.log("Methods: ", logicEngine.methods);
+
+    let allowedConditions: string[] = [];
+    if (typeof logicEngine.methods === 'object' && logicEngine.methods !== null) {
+        Object.keys(logicEngine.methods).forEach((methodName) => {
+            allowedConditions.push(methodName);
+        });
+    } else {
+        console.error("logicEngine.methods is not an object:", logicEngine.methods);
+    }
+    console.log("Allowed conditions: ", allowedConditions);
+
+    const form = rule ? useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            description: rule.rule.name,
+            page: rule.rule.actionValue,
+            rule_option: rule.rule.conditions[0],
+            keyword: rule.rule.conditions[0]["var"],
+            previous_rule: rule.parent,
+            priority: rule.rule.salience,
+        },
+    }) : useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             description: '',
@@ -60,23 +85,16 @@ export function RuleForm() {
     async function onSubmit(values: z.infer<typeof formSchema>) {
         console.log("Valori: ", values);
         let rule: RuleNode;
+        rule = new RuleNode(values.description, [{ [values.rule_option]: [{ "var": "query" }, values.keyword] }], values.page, values.priority);
         if (values.previous_rule === '') {
-            switch (values.rule_option) {
-                case "keyword":
-                    console.log('Keyword: ', values.keyword);
-                    rule = new RuleNode(values.description, [{ "find": [{ "var": "query" }, values.keyword] }], values.page, values.priority);
-                    insertRootRuleNode(db.current, rule);
-                    const allNodes = await getAllRuleNodes(db.current);
-                    rules.splice(0, rules.length);
-                    allNodes.forEach((node) => {
-                        setRules([...rules, { id: node.id, rule: node.rule, parent: node.parent }]);
-                    });
-                    console.table(allNodes);
-                    break;
-            }
+            insertRootRuleNode(db.current, rule);
+            const allNodes = await getAllRuleNodes(db.current);
+            rules.splice(0, rules.length);
+            allNodes.forEach((node) => {
+                setRules([...rules, { id: node.id, rule: node.rule, parent: node.parent }]);
+            });
+            console.table(allNodes);
         } else {
-            rule = new RuleNode(values.description, [{ "find": [{ "var": "query" }, values.keyword] }], values.page, values.priority);
-            console.log("ID of parent: ", values.previous_rule);
             insertChildRuleNode(db.current, rule, values.previous_rule);
             const allNodes = await getAllRuleNodes(db.current);
             allNodes.forEach((node) => {
@@ -104,24 +122,6 @@ export function RuleForm() {
                             <FormItem>
                                 <FormLabel>From rule</FormLabel>
                                 <br />
-                                {/* <Select disabled={rules.length === 0} onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select a previous rule" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {
-                                            rules.map((rule, index) => {
-                                                return (
-                                                    <SelectItem key={index} value={rule.id}>
-                                                        {rule.rule.name || "Unnamed Rule"}
-                                                    </SelectItem>
-                                                );
-                                            })
-                                        }
-                                    </SelectContent>
-                                </Select> */}
                                 <FormControl>
                                     <Popover open={open} onOpenChange={setOpen}>
                                         <PopoverTrigger asChild>
@@ -199,18 +199,63 @@ export function RuleForm() {
                         name="rule_option"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Condition</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormLabel>Condition</FormLabel><br />
+                                {/* <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select a condition type" />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                        <SelectItem value="keyword">Keyword pattern</SelectItem>
-                                        <SelectItem value="regex">Regex</SelectItem>
+                                        {allowedConditions.map((condition) => (
+                                            <SelectItem key={condition} value={condition}>{condition}</SelectItem>
+                                        ))}
                                     </SelectContent>
-                                </Select>
+                                </Select> */}
+                                <Popover open={conditionOpen} onOpenChange={setConditionOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={conditionOpen}
+                                            className="w-fit justify-between"
+                                        >
+                                            {condition
+                                                ? allowedConditions.find((conditionName) => conditionName === condition)
+                                                : "Select a condition type..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[200px] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search condition..." />
+                                            <CommandList>
+                                                <CommandEmpty>No condition found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {allowedConditions.map((conditionName) => (
+                                                        <CommandItem
+                                                            key={conditionName}
+                                                            value={conditionName}
+                                                            onSelect={() => {
+                                                                setCondition(conditionName)
+                                                                setConditionOpen(false)
+                                                                field.onChange(conditionName)
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    condition === conditionName ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {conditionName}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
                                 <FormDescription>
                                     You can only choose one rule.
                                 </FormDescription>
@@ -218,7 +263,7 @@ export function RuleForm() {
                             </FormItem>
                         )}
                     />
-                    {form.watch("rule_option") === "keyword" ? <FormField
+                    {form.watch("rule_option") === "find" ? <FormField
                         control={form.control}
                         name="keyword"
                         render={({ field }) => (

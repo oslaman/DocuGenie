@@ -31,7 +31,7 @@ const Header = () => {
                             </NavigationMenuItem>
                             <NavigationMenuItem>
                                 <NavigationMenuLink className={navigationMenuTriggerStyle()} asChild>
-                                    <Link to="/settings">
+                                    <Link to="/settings/documents">
                                         Settings
                                     </Link>
                                 </NavigationMenuLink>

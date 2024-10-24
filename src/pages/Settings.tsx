@@ -1,24 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { getDB, initSchema, countRows, seedDb, seedSingleDb, clearDb, getDbData, insertRootRuleNode, getAllRuleNodes } from '../utils/db';
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress";
+import { getDB, initSchema, countRows, seedDb, seedSingleDb, clearDb, getDbData, getAllRuleNodes } from '../utils/db';
 import { recursiveChunkingWithPages, TextWithPage } from '../utils/chunking';
 import RulesTree from '@/components/RulesTree';
 import { RuleNode } from '@/utils/rete-network';
 import { RuleForm } from '@/components/RuleForm';
 import { RulesContext } from '@/components/context';
+import { useLocation } from "react-router-dom";
+import { Separator } from "@/components/ui/separator";
 
 import '../App.css';
 import { SidebarNav } from '@/components/sidebar-nav';
+import DocumentsPage from './documents/page';
+import RulesPage from './rules/page';
+import { useParams } from 'react-router-dom';
 
 interface WorkerMessageEvent extends MessageEvent {
     data: {
@@ -36,19 +30,21 @@ export interface Rules {
 
 const sidebarNavItems = [
     {
-      title: "Documents",
-      href: "/settings/documents",
+        title: "Documents",
+        href: "/settings/documents",
     },
     {
-      title: "Rules",
-      href: "/settings/rules",
+        title: "Rules",
+        href: "/settings/rules",
     },
-  ];
+];
 
 const Settings = () => {
+    const location = useLocation();
     const [progress, setProgress] = React.useState(0);
     const [dbRows, setDbRows] = useState<number>(0);
     const [rules, setRulesItems] = useState<Rules[]>([]);
+    const { ruleId } = useParams();
     const setRules = (value: Rules[]) => {
         setRulesItems(value);
     }
@@ -108,211 +104,32 @@ const Settings = () => {
         };
     }, [prompt]);
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const json = JSON.parse(e.target?.result as string);
-            console.log(json)
-            const chunks = json.chunks;
-            worker.current?.postMessage({
-                type: 'process_chunks',
-                data: { chunks },
-            });
-        };
-
-        reader.readAsText(file);
-    };
-
-    const handleEmbeddingsUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const t0 = performance.now();
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const content = e.target?.result as string;
-                const json = JSON.parse(content);
-                const embeddings = json.chunks;
-                const elements = embeddings.length;
-                setProgress(0);
-                await seedDb(db.current, embeddings);
-                // for (let i = 0; i < embeddings.length; i++) {
-                //   const embedding = embeddings[i];
-                //   await seedDb(db.current, [embedding]);
-                //   setProgress((i + 1) / elements * 100);
-                // }
-                setProgress(100);
-                console.log("Upload complete");
-                const t1 = performance.now();
-                console.log(`Time taken for uploading: ${((t1 - t0) / 1000).toFixed(2)} seconds`);
-                const rows = await countRows(db.current, "embeddings");
-                setDbRows(rows);
-            } catch (error) {
-                console.error(`Error processing file ${file.name}:`, error);
-            }
-        };
-
-        reader.onerror = (error) => {
-            console.error(`Error reading file ${file.name}:`, error);
-        };
-
-        reader.readAsText(file);
-    };
-
-    async function handleMultipleEmbeddingsUpload(event: React.ChangeEvent<HTMLInputElement>) {
-        event.preventDefault();
-        console.log("Dati db: ", await getDbData(db.current));
-        const files = Array.from(event.target.files || []);
-        console.log(files)
-        const totalFiles = files.length;
-        setProgress(0);
-        const fileElements: any[] = [];
-
-        const t1 = performance.now();
-
-        for (let index = 0; index < totalFiles; index++) {
-            const file = files[index];
-            if (file instanceof File) {
-                await processFile(file, fileElements);
-            }
-        }
-
-        await seedDb(db.current, fileElements);
-        setProgress(100);
-        console.log("Upload complete");
-        const rows = await countRows(db.current, "embeddings");
-        setDbRows(rows);
-
-        const t2 = performance.now();
-        console.log(`Time taken for uploading: ${((t2 - t1) / 1000).toFixed(2)} seconds`);
-    }
-
-    async function processFile(file: File, fileElements: any[]) {
-        return new Promise<void>((resolve, reject) => {
-            const reader = new FileReader();
-
-            reader.onload = async (e) => {
-                try {
-                    const content = e.target?.result as string;
-                    const embedding = JSON.parse(content);
-                    if (embedding && typeof embedding === 'object') {
-                        fileElements.push(embedding);
-                    } else {
-                        console.error(`File ${file.name} does not contain a valid embedding object.`);
-                    }
-                    resolve();
-                } catch (error) {
-                    console.error(`Error processing file ${file.name}:`, error);
-                    reject(error);
-                }
-            };
-
-            reader.onerror = (error) => {
-                console.error(`Error reading file ${file.name}:`, error);
-                reject(error);
-            };
-
-            reader.readAsText(file);
-        });
-    }
-
-    const handlePagesUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const content = e.target?.result as string;
-                const jsonData = JSON.parse(content);
-
-                const textWithPages: TextWithPage[] = jsonData.document_body.map((entry: any) => ({
-                    text: entry.text,
-                    pageNumber: entry.page
-                }));
-
-                const chunks = await recursiveChunkingWithPages(textWithPages, 800, 300);
-                console.table(chunks);
-
-                worker.current?.postMessage({
-                    type: 'process_chunks',
-                    data: { chunks },
-                });
-            } catch (error) {
-                console.error("Error parsing JSON or processing chunks:", error);
-            }
-        };
-
-        reader.readAsText(file);
-    };
-
-    const cleanDatabase = async () => {
-        try {
-            await clearDb(db.current);
-            setDbRows(0);
-        } catch (error) {
-            console.error("Error clearing the database:", error);
-        }
-    };
-
 
     return (
-        <div className="app-container flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
-            {/* <aside className="-mx-4 lg:w-1/5">
-                <SidebarNav items={sidebarNavItems} />
-            </aside> */}
-            <main className="app-main">
-                <section className="dashboard-container w-full flex flex-row gap-4">
-                    <div className='flex flex-col gap-4 w-full'>
-                        <div className="file-upload">
-                            <Label htmlFor="pages-upload">Upload text pages</Label>
-                            <Input type="file" id="pages-upload" onChange={handlePagesUpload} />
-                        </div>
-                        <div className="file-upload">
-                            <Label htmlFor="file-upload">Upload File</Label>
-                            <Input type="file" id="file-upload" onChange={handleFileUpload} />
-                        </div>
-                        <div className="file-upload">
-                            <Label htmlFor="embeddings-upload">Upload Embeddings</Label>
-                            <Input type="file" id="embeddings-upload" multiple onChange={handleEmbeddingsUpload} />
-                        </div>
-                        <div className="file-upload">
-                            <Label htmlFor="embeddings-upload">Upload Multiple Embeddings</Label>
-                            <Input type="file" id="embeddings-upload" multiple onChange={handleMultipleEmbeddingsUpload} />
-                        </div>
-                        <Progress value={progress} />
-                    </div>
-                    <Card
-                        className="max-w-xs h-fit w-full" x-chunk="charts-01-chunk-3"
-                    >
-                        <CardHeader className="p-4 pb-0">
-                            <CardTitle>Database Info</CardTitle>
-                            <CardDescription>
-                                Embeddings elements in the database
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex flex-row items-baseline gap-4 p-4 pt-0 w-full">
-                            <div className="flex items-baseline gap-1 text-3xl font-bold tabular-nums leading-none">
-                                {dbRows}
-                                <span className="text-sm font-normal text-muted-foreground">
-                                    db rows
-                                </span>
-                            </div>
-                            <Button onClick={cleanDatabase}>Clear Database</Button>
-                        </CardContent>
-                    </Card>
-                </section>
-                <section className="dashboard-container w-full flex-col gap-4">
-                    <RulesContext.Provider value={{rules, setRules}}>
-                        <RuleForm />
-                        <RulesTree />
-                    </RulesContext.Provider>
-                </section>
-            </main>
+        <div className="hidden space-y-6 p-10 pb-16 md:block">
+            <div className="space-y-0.5">
+                <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+                <p className="text-muted-foreground">
+                    Manage your documents and rules preferences.
+                </p>
+            </div>
+            <Separator className="my-6" />
+            <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
+                <aside className="-mx-4 lg:w-1/5 lg:sticky lg:top-0">
+                    <SidebarNav items={sidebarNavItems} />
+                </aside>
+                <main className="flex-1 lg:max-w-2xl">
+                    {location.pathname === "/settings/documents" && (
+                        <DocumentsPage />
+                    )}
+                    {location.pathname === "/settings/rules" && (
+                        <RulesPage />
+                    )}
+                    {location.pathname === `/settings/rules/${ruleId}` && (
+                        <RulesPage id={ruleId} />
+                    )}
+                </main>
+            </div>
         </div>
     );
 };
