@@ -63,7 +63,7 @@ const Settings = () => {
             const allNodes = await getAllRuleNodes(db.current);
             console.log("All nodes: ", allNodes.map((node) => JSON.parse(node.rule.toJSON()).conditions));
             setRules([]);
-            setRules(allNodes.map((node) => ({ id: node.id, rule: node.rule, parent: node.parent || '-' })));
+            setRules(allNodes.map((node) => ({ id: node.id, rule: node.rule, parent: node.parent })));
             setDbRows(count);
             console.log(`Found ${count} rows`);
         };

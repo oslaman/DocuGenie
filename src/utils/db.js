@@ -168,9 +168,10 @@ export const search = async (
 
     rules.forEach(rule => engine.addRootRule(rule));
 
-    let pages;
+    let pages = undefined;
     try {
-        pages = [engine.evaluate({query: query})];
+        pages = engine.evaluate({query: query});
+        console.log('Pages: ', pages);
     } catch (error) {
         console.error('Error evaluating rules: ', error);
     }
@@ -178,7 +179,7 @@ export const search = async (
     console.log('Pages: ', pages);
 
     let vectorResults;
-    if (pages.length > 0) {
+    if (pages && pages.length > 0) {
         console.log('Using vector search with page', pages);
         vectorResults = await pg.query(
             `
@@ -310,19 +311,15 @@ export async function removeRuleNode(db, nodeId) {
     await db.query('BEGIN');
 
     try {
-        const childNodes = await db.query(
-            `SELECT id FROM rules WHERE parent_id = $1`,
-            [nodeId]
-        );
-
-        for (const child of childNodes.rows) {
-            await removeRuleNode(db, child.id);
+        // Reassign children to the parent of the node being deleted
+        const node = await getRuleById(db, nodeId);
+        if (node.parent) {
+            await db.query(`UPDATE rules SET parent_id = $1 WHERE parent_id = $2`, [node.parent, nodeId]);
+        } else {
+            console.warn(`Node with ID ${nodeId} has no parent, skipping reassignment`);
         }
 
-        await db.query(
-            `DELETE FROM rules WHERE id = $1`,
-            [nodeId]
-        );
+        await db.query(`DELETE FROM rules WHERE id = $1`, [nodeId]);
 
         await db.query('COMMIT');
     } catch (error) {
@@ -373,4 +370,8 @@ export async function getRuleById(db, id) {
         rule: ruleNode,
         parent: ruleNode.parentId
     }));
+}
+
+export async function removeParent(db, nodeId) {
+    await db.query(`UPDATE rules SET parent_id = NULL WHERE id = $1`, [nodeId]);
 }

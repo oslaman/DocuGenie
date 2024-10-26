@@ -13,7 +13,7 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { getDB, getAllRuleNodes, insertRootRuleNode, insertChildRuleNode } from "@/utils/db";
+import { getDB, getAllRuleNodes, insertRootRuleNode, insertChildRuleNode, updateRuleNode, removeRuleNode } from "@/utils/db";
 import { RuleNode } from "@/utils/rete-network";
 import { useRulesContext } from "@/components/context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -22,6 +22,8 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogicEngine } from "json-logic-engine";
 import { Rules } from "@/pages/rules/rules-form";
+import { useParams } from "react-router-dom";
+
 const formSchema = z.object({
     description: z.string().min(2),
     rule_option: z
@@ -44,12 +46,11 @@ export function RuleForm({ rule }: RuleFormProps) {
     const [conditionOpen, setConditionOpen] = useState(false)
     const [condition, setCondition] = useState("")
     const { rules, setRules } = useRulesContext();
+    const { ruleId } = useParams();
     const db = useRef<any>(null);
 
     const logicEngine = new LogicEngine();
     logicEngine.addMethod("find", ([str, keyword]: [string, string]) => new RegExp(`\\b${keyword}\\b`, 'i').test(str));
-
-    console.log("Methods: ", logicEngine.methods);
 
     let allowedConditions: string[] = [];
     if (typeof logicEngine.methods === 'object' && logicEngine.methods !== null) {
@@ -59,28 +60,55 @@ export function RuleForm({ rule }: RuleFormProps) {
     } else {
         console.error("logicEngine.methods is not an object:", logicEngine.methods);
     }
-    console.log("Allowed conditions: ", allowedConditions);
 
-    const form = rule ? useForm<z.infer<typeof formSchema>>({
+    let defaultValues = {
+        description: '',
+        page: 0,
+        rule_option: '',
+        keyword: '',
+        previous_rule: '',
+        priority: 0,
+    }
+
+    const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
-            description: rule.rule.name,
-            page: rule.rule.actionValue,
-            rule_option: rule.rule.conditions[0],
-            keyword: rule.rule.conditions[0]["var"],
-            previous_rule: rule.parent,
-            priority: rule.rule.salience,
-        },
-    }) : useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            description: '',
-            page: 0,
-            keyword: '',
-            previous_rule: '',
-            priority: 0,
-        },
+        defaultValues: defaultValues,
     });
+
+    useEffect(() => {
+        if (ruleId) {
+            console.log("Rule id: ", ruleId);
+            const rule = rules.find((rule) => rule.id === ruleId);
+            console.log("Rule: ", rule);
+            if (rule) {
+                defaultValues = {
+                    description: rule.rule.name,
+                    page: rule.rule.actionValue,
+                    rule_option: rule.rule.conditions[0],
+                    keyword: rule.rule.conditions[0]["var"],
+                    previous_rule: rule.parent,
+                    priority: rule.rule.salience,
+                };
+                form.reset(defaultValues);
+            } else {
+                console.warn("No rule found with the given ruleId:", ruleId);
+            }
+        }
+    }, [rule]);
+
+    async function onUpdate(values: z.infer<typeof formSchema>) {
+        console.log("Valori: ", values);
+        if (ruleId) {
+            updateRuleNode(db.current, ruleId, values);
+        }
+    }
+
+    async function onDelete(ruleId: string) {
+        console.log("Rule id: ", ruleId);
+        if (ruleId) {
+            removeRuleNode(db.current, ruleId);
+        }
+    }
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         console.log("Valori: ", values);
@@ -89,7 +117,6 @@ export function RuleForm({ rule }: RuleFormProps) {
         if (values.previous_rule === '') {
             insertRootRuleNode(db.current, rule);
             const allNodes = await getAllRuleNodes(db.current);
-            rules.splice(0, rules.length);
             allNodes.forEach((node) => {
                 setRules([...rules, { id: node.id, rule: node.rule, parent: node.parent }]);
             });
@@ -200,18 +227,6 @@ export function RuleForm({ rule }: RuleFormProps) {
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Condition</FormLabel><br />
-                                {/* <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select a condition type" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {allowedConditions.map((condition) => (
-                                            <SelectItem key={condition} value={condition}>{condition}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select> */}
                                 <Popover open={conditionOpen} onOpenChange={setConditionOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -322,6 +337,8 @@ export function RuleForm({ rule }: RuleFormProps) {
                         )}
                     />
                     <Button type="submit">Add rule</Button>
+                    {ruleId ? <Button type="button" onClick={() => onUpdate(form.getValues())}>Update rule</Button> : null}
+                    {ruleId ? <Button type="button" onClick={() => onDelete(ruleId)}>Delete rule</Button> : null}
                 </form>
             </Form>
         </div>

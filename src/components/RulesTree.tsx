@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, type ChangeEventHandler } from 'react';
-import ReactFlow, {
+import React, { useState, useEffect, useCallback, type ChangeEventHandler, useRef } from 'react';
+import {
     MiniMap,
     Controls,
     Background,
@@ -9,11 +9,17 @@ import ReactFlow, {
     applyNodeChanges,
     applyEdgeChanges,
     ConnectionLineType,
+    getIncomers,
+    getOutgoers,
+    getConnectedEdges,
     Panel,
     type Node,
     type Edge,
     type OnConnect,
+    type OnEdgesChange,
+    useReactFlow
 } from 'reactflow';
+import {ReactFlow} from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useRulesContext } from '@/components/context';
 import { DataTable } from '@/components/rules/data-table';
@@ -21,6 +27,9 @@ import { RuleItems, columns } from "@/components/rules/columns"
 import { Rules } from '@/pages/Settings';
 import dagre from '@dagrejs/dagre';
 import { Button } from '@/components/ui/button';
+import { removeRuleNode, getDB, removeParent, insertChildRuleNode } from '@/utils/db';
+import CustomNode from './tree/CustomNode';
+import { RuleNode } from '@/utils/rete-network';
 
 const position = { x: 0, y: 0 };
 const edgeType = 'smoothstep';
@@ -43,7 +52,7 @@ const initialNodes: any[] = [
     }
 ];
 
-const initialEdges = [{ id: 'e1-2', source: '1', target: '2', type: edgeType, animated: true }];
+const initialEdges = [{ id: '1->2', source: '1', target: '2', type: edgeType, animated: true }];
 
 
 const getLayoutedElements = (nodes: any[], edges: any[], direction = 'TB') => {
@@ -78,111 +87,167 @@ const getLayoutedElements = (nodes: any[], edges: any[], direction = 'TB') => {
     return { nodes: newNodes, edges };
 };
 
+const nodeTypes = {
+    custom: CustomNode
+}
+
 const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
     initialNodes,
     initialEdges,
 );
 
-
-export async function getRulesData(rules: Rules[]): Promise<RuleItems[]> {
-    console.log('Table rules', rules);
-    const rulesData = rules.map((rule) => ({
-        id: rule.id,
-        name: rule.rule.name,
-        salience: rule.rule.salience,
-        children: rule.rule.children.length,
-        parent: rule.parent,
-        page: rule.rule.actionValue,
-    }));
-    return rulesData;
-}
-
 const RulesTree: React.FC = () => {
+    const reactFlowWrapper = useRef(null);
     const { rules, setRules } = useRulesContext();
     const [tableData, setTableData] = useState<RuleItems[]>([]);
 
-    const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
+    const [nodes, setNodes, onNodesChange] = useNodesState([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [menu, setMenu] = useState<any>(null);
+    const ref = useRef(null);
+    const db = useRef<any>(null);
 
-    const onConnect = useCallback(
-        (params: any) =>
-            setEdges((eds) =>
-                addEdge(
-                    { ...params, type: ConnectionLineType.SmoothStep, animated: true },
-                    eds,
-                ),
-            ),
-        [],
-    );
+    useEffect(() => {
+        const fetchData = async () => {
+            db.current = await getDB();
+            const data = await getRulesData(rules);
+            setTableData(data);
+
+            const newNodes: any[] = [];
+            const newEdges: any[] = [];
+
+            rules.forEach((rule) => {
+                newNodes.push({
+                    id: `${rule.id}`,
+                    // type: rule.parent === '-' ? 'input' : rule.rule.children.length > 0 ? null : 'output',
+                    data: {
+                        label: rule.rule.name,
+                        rule: rule
+                    },
+                    position: position,
+                });
+            });
+
+            rules.forEach((rule) => {
+                if (rule.parent && rule.parent !== '-') {
+                    newEdges.push({
+                        id: `${rule.parent}->${rule.id}`,
+                        source: `${rule.parent}`,
+                        target: `${rule.id}`,
+                        type: edgeType,
+                        animated: true
+                    });
+                }
+            });
+
+            console.log("Nodes:", newNodes);
+            console.log("Edges:", newEdges);
+
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(newNodes, newEdges, 'TB');
+            setNodes([...layoutedNodes] as any);
+            setEdges([...layoutedEdges] as any);
+        };
+
+        fetchData();
+    }, [rules]);
+
+    async function getRulesData(rules: Rules[]): Promise<RuleItems[]> {
+        console.log('Table rules', rules);
+        const rulesData = rules.map((rule) => ({
+            id: rule.id,
+            name: rule.rule.name,
+            salience: rule.rule.salience,
+            children: rule.rule.children.length,
+            parent: rule.parent,
+            page: rule.rule.actionValue,
+        }));
+        return rulesData;
+    }
 
     const onLayout = useCallback(
         (direction: string) => {
             const { nodes: layoutedNodes, edges: layoutedEdges } =
                 getLayoutedElements(nodes, edges, direction);
 
-            setNodes([...layoutedNodes]);
-            setEdges([...layoutedEdges]);
+            setNodes([...layoutedNodes] as any);
+            setEdges([...layoutedEdges] as any);
         },
         [nodes, edges],
     );
 
-    useEffect(() => {
-        let newNodes: any[] = [];
-        let newEdges: any[] = [];
-
-        const fetchData = async () => {
-            const data = await getRulesData(rules);
-            setTableData(data);
-
-            rules.forEach((rule) => {
-                newNodes.push({
-                    id: rule.id,
-                    type: rule.id == '1' ? 'input' : rule.rule.children.length > 0 ? null : 'output',
-                    data: { label: rule.rule.name },
-                    position: position
-                });
-
-                if (rule.parent) {
-                    newEdges.push({
-                        id: `${rule.parent}-${rule.id}`,
-                        source: rule.parent == '-' ? 1 : rule.parent,
-                        target: rule.id,
-                        type: edgeType,
-                        animated: true
-                    });
-                }
-
-                console.log(newNodes, newEdges)
-            });
-
-            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(newNodes, newEdges, 'LR');
-            setNodes([...layoutedNodes]);
-            setEdges([...layoutedEdges]);
-        };
-
-        fetchData();
-    }, [rules]);
-
-    const onConnectEnd = (params: any) => {
-        console.log('Connect end', params);
+    const onNodeDoubleClick = (event: any, node: any) => {
+        console.log('Node double clicked', node);
+        window.location.href = `/settings/rules/${node.data.rule.id}`;
     };
+
+    const onEdgesDelete = useCallback(
+        (deleted: any[]) => {
+            console.log("Edges deleted", deleted);
+            setEdges((eds) => applyEdgeChanges(deleted, eds));
+            deleted.forEach((edge) => {
+                console.log("Edge target", edge.target);
+                removeParent(db.current, edge.target);
+            });
+        },
+        [setEdges],
+    );
+
+    const onNodesDelete = useCallback(
+        (deleted: any[]) => {
+            console.log("Nodes deleted", deleted);
+            setEdges(
+                deleted.reduce((acc: Edge[], node: Node) => {
+                    const incomers = getIncomers(node, nodes, edges);
+                    const outgoers = getOutgoers(node, nodes, edges);
+                    const connectedEdges = getConnectedEdges([node], edges);
+
+                    const remainingEdges = acc.filter(
+                        (edge: any) => !connectedEdges.includes(edge as never),
+                    );
+
+                    const createdEdges = incomers.flatMap(({ id: source }) =>
+                        outgoers.map(({ id: target }) => ({
+                            id: `${source}->${target}`,
+                            source,
+                            target,
+                            type: edgeType,
+                            animated: true
+                        })),
+                    );
+
+                    console.log("Node to be deleted", deleted[0]);
+
+                    removeRuleNode(db.current, deleted[0].id);
+                    setTableData((tableData) => tableData.filter((t) => t.id !== deleted[0].id));
+
+
+                    let parent = deleted[0].data.rule.parent;
+                    parent = parent === "-" ? undefined : parent;
+                    return [...remainingEdges, ...createdEdges];
+                }, edges),
+            );
+        },
+        [nodes, edges],
+    );
 
     return (
         <React.Fragment>
             <DataTable columns={columns} data={tableData} />
-            <div className="container mx-auto w-full h-96">
+            <div className="container mx-auto w-full h-96" ref={reactFlowWrapper}>
                 <ReactFlow
+                    ref={ref}
                     nodes={nodes}
                     edges={edges}
                     onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    onConnectEnd={onConnectEnd}
+                    onEdgesDelete={onEdgesDelete}
                     connectionLineType={ConnectionLineType.SmoothStep}
-                    fitView
                     zoomOnDoubleClick={true}
                     zoomOnScroll={true}
                     zoomOnPinch={true}
+                    onNodeDoubleClick={onNodeDoubleClick}
+                    onNodesDelete={onNodesDelete}
+                    nodeTypes={nodeTypes}
+                    fitView
                 >
                     <Panel position="top-right">
                         <div className="flex gap-2 ">
