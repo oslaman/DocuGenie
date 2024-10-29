@@ -7,6 +7,7 @@ export class RuleNode {
     children: RuleNode[];
     salience: number;
     timestamp: number;
+    parentId: string | null = null;
     logicEngine: LogicEngine;
 
     constructor(

@@ -1,9 +1,9 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from 'react-router-dom';
-import Header from '@/components/Header';
-import Home from '@/pages/Home';
-import Settings from '@/pages/Settings';
-import ErrorPage from "@/error-page";
+import Header from '@/components/layout/Header';
+import Home from '@/components/pages/Home';
+import Settings from '@/components/pages/Settings';
+import ErrorPage from "@/components/pages/error-page";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
