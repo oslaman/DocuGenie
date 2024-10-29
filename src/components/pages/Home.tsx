@@ -1,16 +1,21 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { InputDialogue } from "@/components/InputDialogue";
 import { WorkerMessageEvent } from '@/utils/interfaces';
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, Loader2, Bot, User } from 'lucide-react'
+import { Avatar } from "@/components/ui/avatar"
+import { Send, Loader2, Bot, User, Copy, Download, Share } from 'lucide-react'
+import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
+import { Textarea } from "@/components/ui/textarea"
 
 import { getDB, initSchema, countRows } from '@/utils/db/db-helper';
-import { search } from '@/utils/db/db-documents';
+import { search, searchWithPage } from '@/utils/db/db-documents';
+import { getRootRules } from '@/utils/db/db-rules';
+import { RuleNode, RulesEngine } from '@/utils/rete-network';
+
 import '@/App.css';
 
 import ChatWorker from '@/workers/worker.js?worker';
@@ -45,17 +50,16 @@ const Home: React.FC = () => {
     if (worker.current) {
       setAnswerResult(null);
       setDocumentContext('');
-      await worker.current.postMessage({ type: "search", data: { query: input } });
+      const pages = await checkRules(input);
+      if (pages) {
+        await worker.current.postMessage({ type: "search", data: { query: input, pages: pages } });
+      } else {
+        await worker.current.postMessage({ type: "search", data: { query: input } });
+      }
     }
-
-    // // Mock response
-    // const assistantMessage: Message = {
-    //   role: 'assistant',
-    //   content: `Here's a simulated response to: "${input}"`
-    // }
-    // setMessages(prevMessages => [...prevMessages, assistantMessage])
-    // setIsLoading(false)
   }
+
+  
 
   useEffect(() => {
     const setup = async () => {
@@ -100,18 +104,21 @@ const Home: React.FC = () => {
             setInput('');
             break;
           }
+        case "found_pages":
+          {
+            if (e.data.pages) {
+              const searchResults = await searchWithPage(db.current, e.data.query, e.data.pages);
+              worker.current?.postMessage({
+                type: 'generate_text',
+                data: {
+                  query: e.data.query,
+                  context: "Pages:" + searchResults.join(', '),
+                },
+              });
+            }
+            break;
+          }
         case "text_generation_complete": {
-          //   accumulatedContent += e.data.output?.content || ''; // Accumulate the content
-          // if (e.data.isFinal) { // Check if the stream is complete
-          //   const assistantMessage: Message = {
-          //     role: 'assistant',
-          //     content: accumulatedContent // Use the accumulated content
-          //   }
-          //   setMessages(prevMessages => [...prevMessages, assistantMessage])
-          //   setIsLoading(false)
-          //   setAnswerResult(accumulatedContent);
-          //   accumulatedContent = ''; // Reset the accumulator
-          // }
           const assistantMessage: Message = {
             role: 'assistant',
             content: e.data.output
@@ -130,6 +137,18 @@ const Home: React.FC = () => {
       worker.current?.removeEventListener("message", onMessageReceived);
     };
   }, [prompt]);
+
+  const checkRules = async (query: string) => {
+    const rules = await getRootRules(db.current);
+    const engine = new RulesEngine();
+    rules.forEach((rule: RuleNode) => engine.addRootRule(rule));
+    try {
+      return engine.evaluate({ query: query });
+    } catch (error) {
+      console.error('Error evaluating rules: ', error);
+      return [];
+    }
+  }
 
   const classify = useCallback((text: string) => {
     if (worker.current) {
@@ -189,6 +208,101 @@ const Home: React.FC = () => {
             </form>
           </CardFooter>
         </Card>
+        <div className="flex-1 overflow-auto p-6">
+                <div className="max-w-3xl mx-auto grid gap-8">
+                    <div className="grid gap-2">
+                        <Textarea
+                            placeholder="Enter your prompt here..."
+                            className="bg-muted text-foreground rounded-lg p-4 text-lg font-medium resize-none"
+                            rows={3}
+                        />
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline">Clear</Button>
+                            <Button>Submit</Button>
+                        </div>
+                    </div>
+                    <div className="grid gap-4">
+                        <div className="bg-muted rounded-lg p-4">
+                            <h2 className="text-lg font-medium mb-2">Model Output</h2>
+                            <div className="prose text-foreground">
+                                <p>The large language model has generated the following response based on your prompt:</p>
+                                <p>
+                                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ut risus in augue luctus venenatis. Sed
+                                    quis lacus non lectus bibendum finibus. Nullam euismod, nisl eget ultricies tincidunt, nisi nisl
+                                    aliquam nisl, eget aliquam nisl nisl eget nisl.
+                                </p>
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <Button variant="ghost" size="icon">
+                                    <Copy className="w-5 h-5" />
+                                    <span className="sr-only">Copy</span>
+                                </Button>
+                                <Button variant="ghost" size="icon">
+                                    <Download className="w-5 h-5" />
+                                    <span className="sr-only">Download</span>
+                                </Button>
+                                <Button variant="ghost" size="icon">
+                                    <Share className="w-5 h-5" />
+                                    <span className="sr-only">Share</span>
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="bg-muted rounded-lg p-4">
+                            <h2 className="text-lg font-medium mb-2">Parameters</h2>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-1">
+                                    <Label htmlFor="temperature">Temperature</Label>
+                                    <Slider id="temperature" defaultValue={[0.7]} min={0} max={1} step={0.01} />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label htmlFor="max-tokens">Max Tokens</Label>
+                                    <Input id="max-tokens" type="number" defaultValue={256} min={1} max={2048} />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label htmlFor="top-p">Top P</Label>
+                                    <Slider id="top-p" defaultValue={[0.9]} min={0} max={1} step={0.01} />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label htmlFor="top-k">Top K</Label>
+                                    <Input id="top-k" type="number" defaultValue={50} min={1} max={200} />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-muted rounded-lg p-4">
+                            <h2 className="text-lg font-medium mb-2">History</h2>
+                            <div className="grid gap-2">
+                                <div className="flex items-center gap-2 p-2 rounded-md hover:bg-background">
+                                    <div className="text-sm font-medium">Prompt 1</div>
+                                    <div className="text-sm text-muted-foreground">2 min ago</div>
+                                    <div className="flex-1" />
+                                    <Button variant="ghost" size="icon">
+                                        <Copy className="w-5 h-5" />
+                                        <span className="sr-only">Copy</span>
+                                    </Button>
+                                </div>
+                                <div className="flex items-center gap-2 p-2 rounded-md hover:bg-background">
+                                    <div className="text-sm font-medium">Prompt 2</div>
+                                    <div className="text-sm text-muted-foreground">10 min ago</div>
+                                    <div className="flex-1" />
+                                    <Button variant="ghost" size="icon">
+                                        <Copy className="w-5 h-5" />
+                                        <span className="sr-only">Copy</span>
+                                    </Button>
+                                </div>
+                                <div className="flex items-center gap-2 p-2 rounded-md hover:bg-background">
+                                    <div className="text-sm font-medium">Prompt 3</div>
+                                    <div className="text-sm text-muted-foreground">30 min ago</div>
+                                    <div className="flex-1" />
+                                    <Button variant="ghost" size="icon">
+                                        <Copy className="w-5 h-5" />
+                                        <span className="sr-only">Copy</span>
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                </div>
+            </div>
+        </div>
         {/* <section className="search-section">
           <InputDialogue
             prompt={prompt}
@@ -207,6 +321,7 @@ const Home: React.FC = () => {
             {answerResult}
           </p>
         </section> */}
+
       </main>
     </div>
   );

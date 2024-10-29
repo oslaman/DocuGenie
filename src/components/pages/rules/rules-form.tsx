@@ -7,46 +7,49 @@ import { Rules } from "@/utils/interfaces";
 
 import { getDB, initSchema, countRows } from '@/utils/db/db-helper';
 import { getAllRuleNodes, getRuleById } from '@/utils/db/db-rules';
+import { useTransition } from "react";
 
 export default function RulesForm() {
     const [rules, setRulesItems] = useState<Rules[]>([]);
+    const [isPending, startTransition] = useTransition();
     const setRules = (value: Rules[]) => {
         setRulesItems(value);
     }
 
-    const initailizing = useRef(false);
+    const initializing = useRef(false);
     const db = useRef<any>(null);
 
     useEffect(() => {
         const setup = async () => {
             try {
-                initailizing.current = true;
+                initializing.current = true;
                 db.current = await getDB();
-                let allNodes = [];
-                
-                allNodes = await getAllRuleNodes(db.current);
-                
+                let allNodes = await getAllRuleNodes(db.current);
+
                 if (!allNodes || allNodes.length === 0) {
                     console.warn("No nodes found");
                 } else {
                     console.log("Nodes: ", allNodes.map((node) => JSON.parse(node.rule.toJSON()).conditions));
                 }
-                
+
                 const formattedNodes = allNodes.map((node) => ({
                     id: node.id,
                     rule: node.rule,
                     parent: node.parent !== null ? node.parent.toString() : ''
                 }));
-                
-                setRules(formattedNodes);
+
+                startTransition(() => {
+                    setRules(formattedNodes);
+                });
             } catch (error) {
                 console.error("Error setting up rules:", error);
             } finally {
-                initailizing.current = false;
+                initializing.current = false;
+                console.log("Rules setup: ", rules);
             }
         };
-        
-        if (!db.current && !initailizing.current) {
+
+        if (!db.current && !initializing.current) {
             setup();
         }
     }, []);

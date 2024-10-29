@@ -1,6 +1,4 @@
 import { PGliteWorker } from "@electric-sql/pglite/worker";
-import { RuleNode, RulesEngine } from "@/utils/rete-network";
-import { getRootRules } from "@/utils/db/db-rules";
 
 
 export const seedDb = async (pg: PGliteWorker, embeddings: any[], batchSize = 500) => {
@@ -59,44 +57,16 @@ export const search = async (
     match_threshold = 0.8,
     limit = 3,
 ) => {
-    const rules = await getRootRules(pg);
-    const engine = new RulesEngine();
-
-    rules.forEach((rule: RuleNode) => engine.addRootRule(rule));
-
-    let pages: number | undefined = undefined;
-    try {
-        pages = engine.evaluate({query: query});
-        console.log('Pages: ', pages);
-    } catch (error) {
-        console.error('Error evaluating rules: ', error);
-    }
-    console.log(typeof pages, pages);
-    console.log('Pages: ', pages);
-
     let vectorResults;
-    if (pages) {
-        console.log('Using vector search with page', pages);
-        vectorResults = await pg.query(
-            `
-          select * from embeddings
-          where embeddings.page_id = $1
-          `,
-            [pages],
-        );
-
-        console.table(vectorResults.rows);
-    } else {
-        vectorResults = await pg.query(
-            `
+    vectorResults = await pg.query(
+        `
           select * from embeddings
           where embeddings.embedding <#> $1 < $2
           order by embeddings.embedding <#> $1
           limit $3;
           `,
-            [JSON.stringify(embedding), -Number(match_threshold), Number(limit)],
-        );
-    }
+        [JSON.stringify(embedding), -Number(match_threshold), Number(limit)],
+    );
 
     const bm25Results = await pg.query(
         `
@@ -117,6 +87,22 @@ export const search = async (
 
     return formattedChunks;
 };
+
+export const searchWithPage = async (
+    pg: PGliteWorker,
+    query: string,
+    page: number,
+) => {
+    const results = await pg.query(
+        `
+        select * from embeddings
+        where embeddings.page_id = $1
+        `,
+        [page],
+    );
+
+    return results.rows;
+}
 
 export const getTotalPages = async (pg: PGliteWorker) => {
     const totalPages: any = await pg.query(`SELECT MAX(page_id) FROM embeddings`);

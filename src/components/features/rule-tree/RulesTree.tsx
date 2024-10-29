@@ -215,7 +215,7 @@ const RulesTree: React.FC = () => {
 
                     removeRuleNode(db.current, deleted[0].id);
                     setTableData((tableData) => tableData.filter((t) => t.id !== deleted[0].id));
-                    
+
                     // remove node from rules
                     const updatedRules = rules.filter((rule: Rules) => rule.id !== deleted[0].id);
                     setRules(updatedRules);
@@ -259,6 +259,7 @@ const RulesTree: React.FC = () => {
                             return node.type === 'input' ? 'red' : node.type === 'output' ? 'green' : 'grey';
                         }}
                     />
+                    <Background />
                 </ReactFlow>
             </div>
         </React.Fragment>

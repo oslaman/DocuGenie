@@ -81,20 +81,30 @@ export async function getAllRuleNodes(pg: PGliteWorker) {
     const res = await pg.query(query);
 
     const nodes: { [key: number]: RuleNode } = {};
+    const parentChildMap: { [key: number]: number[] } = {};
+
     res.rows.forEach((row: any) => {
-        nodes[row.id] = new RuleNode(
+        const ruleNode = new RuleNode(
             row.name,
             JSON.parse(row.conditions),
             row.action,
             row.salience
         );
-        nodes[row.id].parentId = row.parent_id;
+        ruleNode.parentId = row.parent_id;
+        nodes[row.id] = ruleNode;
+
+        if (row.parent_id) {
+            if (!parentChildMap[row.parent_id]) {
+                parentChildMap[row.parent_id] = [];
+            }
+            parentChildMap[row.parent_id].push(row.id);
+        }
     });
 
-    res.rows.forEach((row: any) => {
-        if (row.parent_id) {
-            nodes[row.parent_id].children.push(nodes[row.parent_id]);
-        }
+    Object.entries(parentChildMap).forEach(([parentId, childIds]) => {
+        childIds.forEach((childId) => {
+            nodes[Number(parentId)].children.push(nodes[childId]);
+        });
     });
 
     return Object.entries(nodes).map(([id, ruleNode]) => ({

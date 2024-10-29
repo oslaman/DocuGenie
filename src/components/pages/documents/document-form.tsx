@@ -239,19 +239,19 @@ export default function DocumentForm() {
         <div className="dashboard-container w-full flex flex-row gap-4">
             <div className='flex flex-col gap-4 w-full'>
                 <div className="file-upload">
-                    <Label htmlFor="pages-upload">Upload text pages</Label>
+                    <Label htmlFor="pages-upload">Upload of JSON with text and page number for each page. The chunking and embedding will be done automatically.</Label>
                     <Input type="file" id="pages-upload" onChange={handlePagesUpload} />
                 </div>
                 <div className="file-upload">
-                    <Label htmlFor="file-upload">Upload File</Label>
+                    <Label htmlFor="file-upload">Upload of JSON with chunks and page numbers. The embedding will be done automatically.</Label>
                     <Input type="file" id="file-upload" onChange={handleFileUpload} />
                 </div>
                 <div className="file-upload">
-                    <Label htmlFor="embeddings-upload">Upload Embeddings</Label>
+                    <Label htmlFor="embeddings-upload">Upload of JSON with chunks, page numbers and embeddings. The embedding are already done and will not be done automatically.</Label>
                     <Input type="file" id="embeddings-upload" multiple onChange={handleEmbeddingsUpload} />
                 </div>
                 <div className="file-upload">
-                    <Label htmlFor="embeddings-upload">Upload Multiple Embeddings</Label>
+                    <Label htmlFor="embeddings-upload">Upload of multiple JSONs with a chunk, page number and embeddings each. The embedding are already done and will not be done automatically.</Label>
                     <Input type="file" id="embeddings-upload" multiple onChange={handleMultipleEmbeddingsUpload} />
                 </div>
                 <Progress value={progress} />

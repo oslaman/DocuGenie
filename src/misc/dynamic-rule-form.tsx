@@ -29,11 +29,11 @@ export default function DynamicRuleForm() {
     setRules([...rules, { type: '', value: '' }])
   }
 
-  const updateRule = (index: number, field: string, value: string) => {
-    const updatedRules = [...rules]
-    updatedRules[index][field] = value
-    setRules(updatedRules)
-  }
+  const updateRule = (index: number, field: 'type' | 'value', value: string) => {
+    const updatedRules = [...rules];
+    updatedRules[index][field] = value;
+    setRules(updatedRules);
+}
 
   return (
     <div className="w-full max-w-2xl mx-auto p-4 space-y-4">
