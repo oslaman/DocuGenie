@@ -38,22 +38,6 @@ const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 const nodeWidth = 172;
 const nodeHeight = 36;
 
-const initialNodes: any[] = [
-    {
-        id: '1',
-        type: 'input',
-        data: { label: 'Input Node' },
-        position: position
-    },
-    {
-        id: '2',
-        data: { label: 'Output Node' },
-        position: position
-    }
-];
-
-const initialEdges = [{ id: '1->2', source: '1', target: '2', type: edgeType, animated: true }];
-
 
 const getLayoutedElements = (nodes: any[], edges: any[], direction = 'TB') => {
     const isHorizontal = direction === 'LR';
@@ -87,18 +71,12 @@ const getLayoutedElements = (nodes: any[], edges: any[], direction = 'TB') => {
     return { nodes: newNodes, edges };
 };
 
-const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-    initialNodes,
-    initialEdges,
-);
-
 const RulesTree: React.FC = () => {
     const { rules, setRules } = useRulesContext();
     const [tableData, setTableData] = useState<RuleItems[]>([]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-    const [menu, setMenu] = useState<any>(null);
     const ref = useRef(null);
     const db = useRef<any>(null);
 
@@ -175,17 +153,17 @@ const RulesTree: React.FC = () => {
         window.location.href = `/settings/rules/${node.data.rule.id}`;
     };
 
-    const onEdgesDelete = useCallback(
-        (deleted: any[]) => {
-            console.log("Edges deleted", deleted);
-            setEdges((eds) => applyEdgeChanges(deleted, eds));
-            deleted.forEach((edge) => {
-                console.log("Edge target", edge.target);
-                removeParent(db.current, edge.target);
-            });
-        },
-        [setEdges],
-    );
+    // const onEdgesDelete = useCallback(
+    //     (deleted: any[]) => {
+    //         console.log("Edges deleted", deleted);
+    //         setEdges((eds) => applyEdgeChanges(deleted, eds));
+    //         deleted.forEach((edge) => {
+    //             console.log("Edge target", edge.target);
+    //             removeParent(db.current, edge.target);
+    //         });
+    //     },
+    //     [setEdges],
+    // );
 
     const onNodesDelete = useCallback(
         (deleted: any[]) => {
@@ -197,7 +175,7 @@ const RulesTree: React.FC = () => {
                     const connectedEdges = getConnectedEdges([node], edges);
 
                     const remainingEdges = acc.filter(
-                        (edge: any) => !connectedEdges.includes(edge as never),
+                        (edge: any) => !connectedEdges.includes(edge),
                     );
 
                     const createdEdges = incomers.flatMap(({ id: source }) =>
@@ -213,20 +191,24 @@ const RulesTree: React.FC = () => {
                     console.log("Deleted nodes", deleted);
                     console.log("Node to be deleted", deleted[0]);
 
-                    removeRuleNode(db.current, deleted[0].id);
+                    removeRuleNode(db.current, deleted[0].data.rule.id, deleted[0].data.rule.parent.toString());
                     setTableData((tableData) => tableData.filter((t) => t.id !== deleted[0].id));
 
-                    // remove node from rules
-                    const updatedRules = rules.filter((rule: Rules) => rule.id !== deleted[0].id);
-                    setRules(updatedRules);
+                    // // remove node from rules
+                    // this should remove the node from the rules array, but messes up the tree layout
+                    // const updatedRules = rules.filter((rule: Rules) => rule.id !== deleted[0].id);
+                    // setRules(updatedRules);
 
-                    let parent = deleted[0].data.rule.parent;
-                    parent = parent === "-" ? undefined : parent;
                     return [...remainingEdges, ...createdEdges];
                 }, edges),
             );
         },
         [nodes, edges],
+    );
+
+    const onConnect = useCallback(
+        (params: any) => setEdges(addEdge(params, edges)),
+        [edges],
     );
 
     return (
@@ -238,14 +220,15 @@ const RulesTree: React.FC = () => {
                     nodes={nodes}
                     edges={edges}
                     onNodesChange={onNodesChange}
-                    onEdgesDelete={onEdgesDelete}
-                    connectionLineType={ConnectionLineType.SmoothStep}
+                    onEdgesChange={onEdgesChange}
                     zoomOnDoubleClick={true}
                     zoomOnScroll={true}
                     zoomOnPinch={true}
                     onNodeDoubleClick={onNodeDoubleClick}
                     onNodesDelete={onNodesDelete}
+                    onConnect={onConnect}
                     fitView
+                    attributionPosition="top-right"
                 >
                     <Panel position="top-right">
                         <div className="flex gap-2 ">

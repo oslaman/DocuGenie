@@ -1,4 +1,3 @@
-import { formSchema } from "@/components/features/rule-form/EditRuleForm";
 import { RuleNode } from "@/utils/rete-network";
 import { PGliteWorker } from "@electric-sql/pglite/worker";
 
@@ -150,14 +149,13 @@ export async function getRootRules(pg: PGliteWorker) {
     return rootNodes;
 }
 
-export async function removeRuleNode(pg: PGliteWorker, nodeId: string) {
+export async function removeRuleNode(pg: PGliteWorker, nodeId: string, parentId: string) {
     await pg.query('BEGIN');
 
     try {
-        const nodes = await getRuleById(pg, nodeId);
-        const node = nodes[0];
-        if (node && node.parent !== null && node.parent !== undefined && node.parent !== "") {
-            await pg.query(`UPDATE rules SET parent_id = $1 WHERE parent_id = $2`, [node.parent, nodeId]);
+        console.log("Parent ID: ", parentId);
+        if (parentId && parentId !== "") {
+            await pg.query(`UPDATE rules SET parent_id = $1 WHERE parent_id = $2`, [parentId, nodeId]);
         } else {
             console.warn(`Node with ID ${nodeId} has no parent, skipping reassignment`);
             await pg.query(`UPDATE rules SET parent_id = NULL WHERE parent_id = $1`, [nodeId]);
@@ -170,6 +168,8 @@ export async function removeRuleNode(pg: PGliteWorker, nodeId: string) {
         await pg.query('ROLLBACK');
         console.error('Error removing rule node:', error);
         throw error;
+    } finally {
+        console.log("Removed rule node: ", nodeId);
     }
 }
 
@@ -188,6 +188,8 @@ export async function updateRuleNode(pg: PGliteWorker, nodeId: string, updatedFi
         await pg.query('ROLLBACK');
         console.error('Error updating rule node:', error);
         throw error;
+    } finally {
+        console.log("Updated rule node: ", nodeId);
     }
 }
 
@@ -223,6 +225,8 @@ export async function getRuleById(pg: PGliteWorker, id: string) {
         }
     });
 
+    console.log("Nodes (getRuleById): ", nodes);
+
     return Object.entries(nodes).map(([id, ruleNode]) => ({
         id: id,
         rule: ruleNode,
@@ -239,5 +243,7 @@ export async function removeParent(pg: PGliteWorker, nodeId: string) {
         await pg.query('ROLLBACK');
         console.error('Error removing parent:', error);
         throw error;
+    } finally {
+        console.log("Removed parent: ", nodeId);
     }
 }

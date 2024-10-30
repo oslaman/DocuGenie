@@ -15,6 +15,7 @@ import { getDB, initSchema, countRows } from '@/utils/db/db-helper';
 import { search, searchWithPage } from '@/utils/db/db-documents';
 import { getRootRules } from '@/utils/db/db-rules';
 import { RuleNode, RulesEngine } from '@/utils/rete-network';
+import { timeSince } from '@/utils/helpers';
 
 import '@/App.css';
 
@@ -25,6 +26,11 @@ type Message = {
   content?: string
 }
 
+type PromptHistory = {
+  prompt: string;
+  timestamp: Date;
+}
+
 const Home: React.FC = () => {
   const [prompt, setPrompt] = useState<string>('');
   const [documentContext, setDocumentContext] = useState<string>('');
@@ -33,33 +39,35 @@ const Home: React.FC = () => {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [promptHistory, setPromptHistory] = useState<PromptHistory[]>([]);
 
   const worker = useRef<Worker | null>(null);
   const db = useRef<any>(null);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!input.trim()) return
+    if (!prompt.trim()) return
 
-    console.log("Input: ", input);
+    setPromptHistory(prevHistory => [...prevHistory, { prompt: prompt, timestamp: new Date() }]);
+    console.log("Input: ", prompt);
 
-    const userMessage: Message = { role: 'user', content: input }
-    setMessages(prevMessages => [...prevMessages, userMessage])
+    // const userMessage: Message = { role: 'user', content: input }
+    // setMessages(prevMessages => [...prevMessages, userMessage])
     setIsLoading(true)
 
     if (worker.current) {
       setAnswerResult(null);
       setDocumentContext('');
-      const pages = await checkRules(input);
+      const pages = await checkRules(prompt);
       if (pages) {
-        await worker.current.postMessage({ type: "search", data: { query: input, pages: pages } });
+        await worker.current.postMessage({ type: "search", data: { query: prompt, pages: pages } });
       } else {
-        await worker.current.postMessage({ type: "search", data: { query: input } });
+        await worker.current.postMessage({ type: "search", data: { query: prompt } });
       }
     }
   }
 
-  
+
 
   useEffect(() => {
     const setup = async () => {
@@ -87,7 +95,6 @@ const Home: React.FC = () => {
           break;
         case "search_complete":
           {
-            const currentInput = input
             console.log("Embedding: ", e.data.embedding);
             console.log("Search Input: ", e.data.query);
             const searchResults = await search(db.current, e.data.embedding, e.data.query);
@@ -119,13 +126,16 @@ const Home: React.FC = () => {
             break;
           }
         case "text_generation_complete": {
-          const assistantMessage: Message = {
-            role: 'assistant',
-            content: e.data.output
+          // const assistantMessage: Message = {
+          //   role: 'assistant',
+          //   content: e.data.output
+          // }
+          // setMessages(prevMessages => [...prevMessages, assistantMessage])
+          
+          setAnswerResult(e.data.output);
+          if (e.data.isFinal) {
+            setIsLoading(false)
           }
-          setMessages(prevMessages => [...prevMessages, assistantMessage])
-          setIsLoading(false)
-          //setAnswerResult(accumulatedContent);
           break;
         }
       }
@@ -167,8 +177,8 @@ const Home: React.FC = () => {
         </p>
       </div>
       <Separator className="my-6" />
-      <main className="app-main">
-        <Card className="w-full max-w-2xl mx-auto h-[600px] flex flex-col">
+      <main className="w-full">
+        {/* <Card className="w-full max-w-2xl mx-auto h-[600px] flex flex-col">
           <CardHeader>
             <CardTitle>RAG Chat Interface</CardTitle>
             <CardDescription>Ask your questions here</CardDescription>
@@ -207,101 +217,76 @@ const Home: React.FC = () => {
               </Button>
             </form>
           </CardFooter>
-        </Card>
-        <div className="flex-1 overflow-auto p-6">
-                <div className="max-w-3xl mx-auto grid gap-8">
-                    <div className="grid gap-2">
-                        <Textarea
-                            placeholder="Enter your prompt here..."
-                            className="bg-muted text-foreground rounded-lg p-4 text-lg font-medium resize-none"
-                            rows={3}
-                        />
-                        <div className="flex justify-end gap-2">
-                            <Button variant="outline">Clear</Button>
-                            <Button>Submit</Button>
-                        </div>
-                    </div>
-                    <div className="grid gap-4">
-                        <div className="bg-muted rounded-lg p-4">
-                            <h2 className="text-lg font-medium mb-2">Model Output</h2>
-                            <div className="prose text-foreground">
-                                <p>The large language model has generated the following response based on your prompt:</p>
-                                <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ut risus in augue luctus venenatis. Sed
-                                    quis lacus non lectus bibendum finibus. Nullam euismod, nisl eget ultricies tincidunt, nisi nisl
-                                    aliquam nisl, eget aliquam nisl nisl eget nisl.
-                                </p>
-                            </div>
-                            <div className="flex justify-end gap-2 mt-4">
-                                <Button variant="ghost" size="icon">
-                                    <Copy className="w-5 h-5" />
-                                    <span className="sr-only">Copy</span>
-                                </Button>
-                                <Button variant="ghost" size="icon">
-                                    <Download className="w-5 h-5" />
-                                    <span className="sr-only">Download</span>
-                                </Button>
-                                <Button variant="ghost" size="icon">
-                                    <Share className="w-5 h-5" />
-                                    <span className="sr-only">Share</span>
-                                </Button>
-                            </div>
-                        </div>
-                        <div className="bg-muted rounded-lg p-4">
-                            <h2 className="text-lg font-medium mb-2">Parameters</h2>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-1">
-                                    <Label htmlFor="temperature">Temperature</Label>
-                                    <Slider id="temperature" defaultValue={[0.7]} min={0} max={1} step={0.01} />
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label htmlFor="max-tokens">Max Tokens</Label>
-                                    <Input id="max-tokens" type="number" defaultValue={256} min={1} max={2048} />
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label htmlFor="top-p">Top P</Label>
-                                    <Slider id="top-p" defaultValue={[0.9]} min={0} max={1} step={0.01} />
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label htmlFor="top-k">Top K</Label>
-                                    <Input id="top-k" type="number" defaultValue={50} min={1} max={200} />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-muted rounded-lg p-4">
-                            <h2 className="text-lg font-medium mb-2">History</h2>
-                            <div className="grid gap-2">
-                                <div className="flex items-center gap-2 p-2 rounded-md hover:bg-background">
-                                    <div className="text-sm font-medium">Prompt 1</div>
-                                    <div className="text-sm text-muted-foreground">2 min ago</div>
-                                    <div className="flex-1" />
-                                    <Button variant="ghost" size="icon">
-                                        <Copy className="w-5 h-5" />
-                                        <span className="sr-only">Copy</span>
-                                    </Button>
-                                </div>
-                                <div className="flex items-center gap-2 p-2 rounded-md hover:bg-background">
-                                    <div className="text-sm font-medium">Prompt 2</div>
-                                    <div className="text-sm text-muted-foreground">10 min ago</div>
-                                    <div className="flex-1" />
-                                    <Button variant="ghost" size="icon">
-                                        <Copy className="w-5 h-5" />
-                                        <span className="sr-only">Copy</span>
-                                    </Button>
-                                </div>
-                                <div className="flex items-center gap-2 p-2 rounded-md hover:bg-background">
-                                    <div className="text-sm font-medium">Prompt 3</div>
-                                    <div className="text-sm text-muted-foreground">30 min ago</div>
-                                    <div className="flex-1" />
-                                    <Button variant="ghost" size="icon">
-                                        <Copy className="w-5 h-5" />
-                                        <span className="sr-only">Copy</span>
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
+        </Card> */}
+        <div className="flex-1 overflow-auto p-6 w-full">
+          <div className="max-w-3xl mx-auto grid gap-8">
+            <div>
+              <form onSubmit={handleSubmit} className="grid gap-2">
+                <Textarea
+                  placeholder="Enter your prompt here..."
+                  className={`${isLoading ? 'bg-muted' : ''} text-foreground rounded-lg p-4 text-lg font-medium resize-none`}
+                  rows={3}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setPrompt('')}>Clear</Button>
+                  <Button type="submit" disabled={isLoading || !prompt.trim()}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}</Button>
                 </div>
+              </form>
             </div>
+            <div className="grid gap-4">
+              <div className="bg-muted rounded-lg p-4">
+                <h2 className="text-lg font-medium mb-2">Model Output</h2>
+                <div className="prose text-foreground">
+                  <p>
+                    {answerResult}
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(answerResult)}>
+                    <Copy className="w-5 h-5" />
+                    <span className="sr-only">Copy</span>
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = `data:text/plain,${answerResult}`;
+                    a.download = 'docugenie-answer.txt';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }}>
+                    <Download className="w-5 h-5" />
+                    <span className="sr-only">Download</span>
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => navigator.share({ title: "DocuGenie", text: answerResult })}>
+                    <Share className="w-5 h-5" />
+                    <span className="sr-only">Share</span>
+                  </Button>
+                </div>
+              </div>
+              <div className="bg-muted rounded-lg p-4">
+                <h2 className="text-lg font-medium mb-2">History</h2>
+                <div className="grid gap-2">
+                  {
+                    promptHistory.map((prompt, index) => {
+                      return (
+                        <div className="flex items-center gap-2 p-2 rounded-md hover:bg-background" key={index}>
+                          <div className="text-sm font-medium">{prompt.prompt}</div>
+                          <div className="text-sm text-muted-foreground">{timeSince(prompt.timestamp) + " ago"}</div>
+                          <div className="flex-1" />
+                          <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(prompt.prompt)}>
+                            <Copy className="w-5 h-5" />
+                            <span className="sr-only">Copy</span>
+                          </Button>
+                        </div>
+                      )
+                    })
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         {/* <section className="search-section">
           <InputDialogue

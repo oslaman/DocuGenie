@@ -114,11 +114,11 @@ self.addEventListener('message', async (event) => {
         if (chunk.usage) {
           console.log(chunk.usage);
         }
-        // self.postMessage({
-        //   status: 'text_generation_complete',
-        //   output: message,
-        //   isFinal: false
-        // });
+        self.postMessage({
+          status: 'text_generation_complete',
+          output: message,
+          isFinal: false
+        });
       }
       
       console.log(message);
