@@ -135,7 +135,7 @@ export function RuleForm() {
                     name="previous_rule"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>From rule</FormLabel>
+                            <FormLabel data-testid="from-rule-label">From rule</FormLabel>
                             <br />
                             <FormControl>
                                 <Popover open={open} onOpenChange={setOpen}>
@@ -196,7 +196,7 @@ export function RuleForm() {
                     name="description"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Rule description</FormLabel>
+                            <FormLabel data-testid="rule-description-label">Rule description</FormLabel>
                             <FormControl>
                                 <Input
                                     placeholder="Rule description"
@@ -215,7 +215,7 @@ export function RuleForm() {
                     name="rule_option"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Condition</FormLabel><br />
+                            <FormLabel data-testid="condition-label">Condition</FormLabel><br />
                             {ruleConditions.map((ruleCondition, index) => (
                                 <div key={index} className="flex items-center space-x-2">
                                     <Popover open={ruleCondition.open} onOpenChange={() => updateRule(index, "type", ruleCondition.type, !ruleCondition.open)}>
@@ -292,7 +292,7 @@ export function RuleForm() {
                     name="page"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Return page</FormLabel>
+                            <FormLabel data-testid="return-page-label">Return page</FormLabel>
                             <FormControl>
                                 <Input
                                     type="number"
@@ -313,7 +313,7 @@ export function RuleForm() {
                     name="priority"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Priority</FormLabel>
+                            <FormLabel data-testid="priority-label">Priority</FormLabel>
                             <FormControl>
                                 <Input
                                     type="number"

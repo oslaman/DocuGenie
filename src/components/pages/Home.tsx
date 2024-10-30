@@ -2,13 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { WorkerMessageEvent } from '@/utils/interfaces';
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar } from "@/components/ui/avatar"
-import { Send, Loader2, Bot, User, Copy, Download, Share } from 'lucide-react'
-import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
+import { Loader2, Copy, Download, Share } from 'lucide-react'
 import { Textarea } from "@/components/ui/textarea"
 
 import { getDB, initSchema, countRows } from '@/utils/db/db-helper';
@@ -60,7 +54,7 @@ const Home: React.FC = () => {
       setDocumentContext('');
       const pages = await checkRules(prompt);
       if (pages) {
-        await worker.current.postMessage({ type: "search", data: { query: prompt, pages: pages } });
+        await worker.current.postMessage({ type: "search_with_pages", data: { query: prompt, pages: pages } });
       } else {
         await worker.current.postMessage({ type: "search", data: { query: prompt } });
       }
@@ -111,7 +105,7 @@ const Home: React.FC = () => {
             setInput('');
             break;
           }
-        case "found_pages":
+        case "search_with_pages_complete":
           {
             console.log("Found pages: ", e.data.pages);
             if (e.data.pages) {
@@ -129,12 +123,6 @@ const Home: React.FC = () => {
             break;
           }
         case "text_generation_complete": {
-          // const assistantMessage: Message = {
-          //   role: 'assistant',
-          //   content: e.data.output
-          // }
-          // setMessages(prevMessages => [...prevMessages, assistantMessage])
-          
           setAnswerResult(e.data.output);
           if (e.data.isFinal) {
             setIsLoading(false)
@@ -163,14 +151,6 @@ const Home: React.FC = () => {
     }
   }
 
-  const classify = useCallback((text: string) => {
-    if (worker.current) {
-      setAnswerResult(null);
-      setDocumentContext('');
-      worker.current.postMessage({ type: "search", data: { query: text } });
-    }
-  }, []);
-
   return (
     <div className="app-container hidden space-y-6 p-10 pb-16 md:block">
       <div className="space-y-0.5">
@@ -181,46 +161,6 @@ const Home: React.FC = () => {
       </div>
       <Separator className="my-6" />
       <main className="w-full">
-        {/* <Card className="w-full max-w-2xl mx-auto h-[600px] flex flex-col">
-          <CardHeader>
-            <CardTitle>RAG Chat Interface</CardTitle>
-            <CardDescription>Ask your questions here</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-grow overflow-hidden">
-            <ScrollArea className="h-full pr-4">
-              {messages.map((message, index) => (
-                <div key={index} className={`flex items-start mb-4 ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
-                  <div className={`flex ${message.role === 'assistant' ? 'flex-row' : 'flex-row-reverse'} items-start max-w-[80%]`}>
-                    <Avatar className="w-8 h-8 mt-0.5 mx-2">
-                      {
-                        message.role === 'assistant' ? <Bot /> : <User />
-                      }
-                    </Avatar>
-                    <div className={`rounded-lg p-3 ${message.role === 'assistant' ? 'bg-secondary text-secondary-foreground' : 'bg-primary text-primary-foreground'}`}>
-                      <p className="text-sm">{message.content}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </ScrollArea>
-          </CardContent>
-          <CardFooter>
-            <form onSubmit={handleSubmit} className="flex w-full items-center space-x-2">
-              <Input
-                type="text"
-                placeholder="Type your message..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onSubmit={handleSubmit}
-                className={`flex-grow ${isLoading ? 'bg-muted' : ''}`}
-              />
-              <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                <span className="sr-only">Send message</span>
-              </Button>
-            </form>
-          </CardFooter>
-        </Card> */}
         <div className="flex-1 overflow-auto p-6 w-full">
           <div className="max-w-3xl mx-auto grid gap-8">
             <div>
@@ -291,25 +231,6 @@ const Home: React.FC = () => {
             </div>
           </div>
         </div>
-        {/* <section className="search-section">
-          <InputDialogue
-            prompt={prompt}
-            setPrompt={setPrompt}
-            classify={classify as (text: string) => Promise<void>}
-          />
-        </section>
-        <section className="results-section">
-          <div className='my-6'>
-            <blockquote className="mt-6 border-l-2 pl-6 italic">
-              {documentContext}
-            </blockquote>
-          </div>
-          <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0">Answer</h2>
-          <p className="leading-7 [&:not(:first-child)]:mt-6">
-            {answerResult}
-          </p>
-        </section> */}
-
       </main>
     </div>
   );

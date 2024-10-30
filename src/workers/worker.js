@@ -99,6 +99,8 @@ self.addEventListener('message', async (event) => {
         { role: 'user', content: user_prompt },
       ];
 
+      console.log(messages);
+
       const request = {
         stream: true,
         stream_options: { insclude_usage: true },
@@ -120,9 +122,7 @@ self.addEventListener('message', async (event) => {
           isFinal: false
         });
       }
-      
-      console.log(message);
-      self.postMessage({
+        self.postMessage({
         status: 'text_generation_complete',
         output: await generator.getMessage(),
         isFinal: true
@@ -130,6 +130,15 @@ self.addEventListener('message', async (event) => {
 
       const t1 = performance.now();
       console.log(`Text generation completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
+      break;
+    }
+    case 'search_with_pages': {
+      console.log('Search with pages:', data.pages);
+      self.postMessage({
+        status: 'search_with_pages_complete',
+        query: data.query,
+        pages: data.pages,
+      });
       break;
     }
   }

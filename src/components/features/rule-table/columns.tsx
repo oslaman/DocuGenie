@@ -135,7 +135,7 @@ export const columns: ColumnDef<RuleItems>[] = [
             <DropdownMenuItem
               onClick={async () => {
                 const db = await getDB();
-                await removeRuleNode(db, rule.id);
+                await removeRuleNode(db, rule.id, rule.parent);
                 const updatedRules = rules.filter((ruleItem: Rules) => ruleItem.id !== rule.id);
                 setRules(updatedRules);
               }}

@@ -5,8 +5,8 @@ import { RuleForm } from "@/components/features/rule-form/RuleForm";
 import { useEffect, useRef } from "react";
 import { Rules } from "@/utils/interfaces";
 
-import { getDB, initSchema, countRows } from '@/utils/db/db-helper';
-import { getAllRuleNodes, getRuleById } from '@/utils/db/db-rules';
+import { getDB } from '@/utils/db/db-helper';
+import { getAllRuleNodes } from '@/utils/db/db-rules';
 import { useTransition } from "react";
 
 export default function RulesForm() {

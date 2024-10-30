@@ -148,7 +148,7 @@ export function EditRuleForm() {
                     name="previous_rule"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>From rule</FormLabel>
+                            <FormLabel data-testid="from-rule-label">From rule</FormLabel>
                             <br />
                             <FormControl>
                                 <Popover open={open} onOpenChange={setOpen}>
@@ -158,6 +158,7 @@ export function EditRuleForm() {
                                             role="combobox"
                                             aria-expanded={open}
                                             className="w-fit justify-between"
+                                            data-testid="from-rule-button"
                                         >
                                             {value && rules.find((rule: Rules) => rule.id === value)
                                                 ? rules.find((rule) => rule.id === value)?.rule.name 
@@ -208,9 +209,9 @@ export function EditRuleForm() {
                     name="description"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Rule description</FormLabel>
+                            <FormLabel data-testid="rule-description-label">Rule description</FormLabel>
                             <FormControl>
-                                <Input placeholder="Rule description" {...field} />
+                                <Input placeholder="Rule description" {...field} data-testid="rule-description-input"/>
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -221,7 +222,7 @@ export function EditRuleForm() {
                     name="rule_option"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Condition</FormLabel><br />
+                            <FormLabel data-testid="condition-label">Condition</FormLabel><br />
                             {ruleConditions.map((ruleCondition, index) => (
                                 <div key={index} className="flex items-center space-x-2">
                                     <Popover open={ruleCondition.open} onOpenChange={() => updateRule(index, "type", ruleCondition.type, !ruleCondition.open)}>
@@ -273,6 +274,7 @@ export function EditRuleForm() {
                                         value={ruleCondition.value}
                                         onChange={(e) => updateRule(index, 'value', e.target.value, ruleCondition.open)}
                                         className="flex-grow"
+                                        data-testid="condition-value-input"
                                     />
                                     <Button
                                         type="button"
@@ -298,9 +300,9 @@ export function EditRuleForm() {
                     name="page"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Page</FormLabel>
+                            <FormLabel data-testid="return-page-label">Page</FormLabel>
                             <FormControl>
-                                <Input type="number" {...field} />
+                                <Input type="number" {...field} data-testid="return-page-input" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -311,9 +313,9 @@ export function EditRuleForm() {
                     name="priority"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Priority</FormLabel>
+                            <FormLabel data-testid="priority-label">Priority</FormLabel>
                             <FormControl>
-                                <Input type="number" {...field} />
+                                <Input type="number" {...field} data-testid="priority-input" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>

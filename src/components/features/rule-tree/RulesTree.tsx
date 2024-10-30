@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, type ChangeEventHandler, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     MiniMap,
     Controls,
@@ -6,18 +6,12 @@ import {
     useNodesState,
     useEdgesState,
     addEdge,
-    applyNodeChanges,
-    applyEdgeChanges,
-    ConnectionLineType,
     getIncomers,
     getOutgoers,
     getConnectedEdges,
     Panel,
     type Node,
     type Edge,
-    type OnConnect,
-    type OnEdgesChange,
-    useReactFlow
 } from 'reactflow';
 import {ReactFlow} from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -29,7 +23,7 @@ import dagre from '@dagrejs/dagre';
 import { Button } from '@/components/ui/button';
 
 import { getDB } from '@/utils/db/db-helper';
-import { removeRuleNode, removeParent } from '@/utils/db/db-rules';
+import { removeRuleNode } from '@/utils/db/db-rules';
 
 const position = { x: 0, y: 0 };
 const edgeType = 'smoothstep';
@@ -153,18 +147,6 @@ const RulesTree: React.FC = () => {
         window.location.href = `/settings/rules/${node.data.rule.id}`;
     };
 
-    // const onEdgesDelete = useCallback(
-    //     (deleted: any[]) => {
-    //         console.log("Edges deleted", deleted);
-    //         setEdges((eds) => applyEdgeChanges(deleted, eds));
-    //         deleted.forEach((edge) => {
-    //             console.log("Edge target", edge.target);
-    //             removeParent(db.current, edge.target);
-    //         });
-    //     },
-    //     [setEdges],
-    // );
-
     const onNodesDelete = useCallback(
         (deleted: any[]) => {
             console.log("Nodes deleted", deleted);
@@ -194,7 +176,7 @@ const RulesTree: React.FC = () => {
                     removeRuleNode(db.current, deleted[0].data.rule.id, deleted[0].data.rule.parent.toString());
                     setTableData((tableData) => tableData.filter((t) => t.id !== deleted[0].id));
 
-                    // // remove node from rules
+                    // remove node from rules
                     // this should remove the node from the rules array, but messes up the tree layout
                     // const updatedRules = rules.filter((rule: Rules) => rule.id !== deleted[0].id);
                     // setRules(updatedRules);
