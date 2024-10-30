@@ -92,6 +92,7 @@ export const searchWithPage = async (
     pg: PGliteWorker,
     query: string,
     page: number,
+    limit = 3,
 ) => {
     const results = await pg.query(
         `
@@ -101,7 +102,24 @@ export const searchWithPage = async (
         [page],
     );
 
-    return results.rows;
+    const bm25Results = await pg.query(
+        `
+      select *, ts_rank_cd(to_tsvector(content), plainto_tsquery($1)) as rank
+      from embeddings
+      where to_tsvector(content) @@ plainto_tsquery($1)
+      order by rank desc
+      limit $2;
+      `,
+        [query, Number(limit)],
+    );
+
+    const combinedResults = [...results.rows, ...bm25Results.rows]
+    .sort((a: any, b: any) => (a.distance || 0) - (b.distance || 0) + (b.rank || 0) - (a.rank || 0))
+    .slice(0, limit);
+
+    const formattedChunks = combinedResults.map((result: any) => `- ${result.content}`);
+
+    return formattedChunks;
 }
 
 export const getTotalPages = async (pg: PGliteWorker) => {

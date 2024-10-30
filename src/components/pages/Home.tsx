@@ -113,13 +113,16 @@ const Home: React.FC = () => {
           }
         case "found_pages":
           {
+            console.log("Found pages: ", e.data.pages);
             if (e.data.pages) {
               const searchResults = await searchWithPage(db.current, e.data.query, e.data.pages);
+              const retrieved_pages = searchResults.map((result: any) => result.page_id).join(', ');
+              console.log("Search results: ", searchResults);
               worker.current?.postMessage({
                 type: 'generate_text',
                 data: {
                   query: e.data.query,
-                  context: "Pages:" + searchResults.join(', '),
+                  context: "Pages:" + retrieved_pages + "\n\n" + searchResults.join('\n'),
                 },
               });
             }
@@ -244,7 +247,7 @@ const Home: React.FC = () => {
                   </p>
                 </div>
                 <div className="flex justify-end gap-2 mt-4">
-                  <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(answerResult)}>
+                  <Button data-testid="copy-button" variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(answerResult)}>
                     <Copy className="w-5 h-5" />
                     <span className="sr-only">Copy</span>
                   </Button>

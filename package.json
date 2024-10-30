@@ -1,5 +1,5 @@
 {
-  "name": "rag",
+  "name": "docugenie",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -62,6 +62,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
+    "@testing-library/jest-dom": "^6.6.2",
     "@testing-library/react": "^16.0.1",
     "@types/node": "^22.7.9",
     "@types/react": "^18.3.12",
