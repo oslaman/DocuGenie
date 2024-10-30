@@ -36,8 +36,6 @@ class TextGenerationSingleton {
 }
 
 self.addEventListener('message', async (event) => {
-  console.log('Worker received message:', event.data);
-  console.log('Worker type:', event.data.type);
   const { type, data } = event.data;
   let classifier = await PipelineSingleton.getInstance((x) => {
     self.postMessage(x);
@@ -58,7 +56,6 @@ self.addEventListener('message', async (event) => {
           normalize: true,
         });
         let resultArray = Array.from(result.data);
-        console.log(resultArray);
         output.push({ content: chunk, embedding: resultArray });
       }
       self.postMessage({ status: 'embedding_complete', output });
@@ -75,10 +72,10 @@ self.addEventListener('message', async (event) => {
       });
 
       const embedding = Array.from(output.data);
-      console.log(embedding);
 
       self.postMessage({
         status: 'search_complete',
+        query: data.query,
         embedding,
       });
       const t1 = performance.now();
@@ -120,12 +117,15 @@ self.addEventListener('message', async (event) => {
         self.postMessage({
           status: 'text_generation_complete',
           output: message,
+          isFinal: false
         });
       }
       
+      console.log(message);
       self.postMessage({
         status: 'text_generation_complete',
         output: await generator.getMessage(),
+        isFinal: true
       });
 
       const t1 = performance.now();
