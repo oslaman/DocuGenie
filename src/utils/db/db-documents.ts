@@ -1,6 +1,11 @@
 import { PGliteWorker } from "@electric-sql/pglite/worker";
 
-
+/**
+ * Seeds the database with embeddings.
+ * @param pg - The PGliteWorker instance.
+ * @param embeddings - The embeddings to seed the database with.
+ * @param batchSize - The size of each batch to insert (default is 500).
+ */
 export const seedDb = async (pg: PGliteWorker, embeddings: any[], batchSize = 500) => {
     console.log("Seeding DB: ", embeddings);
     for (let i = 0; i < embeddings.length; i += batchSize) {
@@ -26,7 +31,12 @@ export const seedDb = async (pg: PGliteWorker, embeddings: any[], batchSize = 50
     }
 }
 
-
+/**
+ * Seeds the database with a single embedding.
+ * @param pg - The PGliteWorker instance.
+ * @param embeddings - The embedding to seed the database with.
+ * @param batchSize - The size of each batch to insert (default is 500).
+ */
 export const seedSingleDb = async (pg: PGliteWorker, embeddings: any[], batchSize = 500) => {
     console.log("Seeding DB: ", embeddings);
     const t1 = performance.now();
@@ -50,6 +60,14 @@ export const seedSingleDb = async (pg: PGliteWorker, embeddings: any[], batchSiz
     console.log(`DB seed completed in ${((t2 - t1) / 1000).toFixed(2)} seconds`);
 }
 
+/**
+ * Searches the database for embeddings matching a query.
+ * @param pg - The PGliteWorker instance.
+ * @param embedding - The embedding to search for.
+ * @param query - The query to search for.
+ * @param match_threshold - The threshold for matching (default is 0.8).
+ * @param limit - The maximum number of results to return (default is 3).
+ */
 export const search = async (
     pg: PGliteWorker,
     embedding: any[],
@@ -88,6 +106,13 @@ export const search = async (
     return formattedChunks;
 };
 
+/**
+ * Searches the database for embeddings matching a query and page number.
+ * @param pg - The PGliteWorker instance.
+ * @param query - The query to search for.
+ * @param page - The page number to search for.
+ * @param limit - The maximum number of results to return (default is 3).
+ */
 export const searchWithPage = async (
     pg: PGliteWorker,
     query: string,
@@ -122,6 +147,11 @@ export const searchWithPage = async (
     return formattedChunks;
 }
 
+/**
+ * Retrieves the total number of pages in the database.
+ * @param pg - The PGliteWorker instance.
+ * @returns The total number of pages.
+ */
 export const getTotalPages = async (pg: PGliteWorker) => {
     const totalPages: any = await pg.query(`SELECT MAX(page_id) FROM embeddings`);
     return totalPages.rows[0].max;

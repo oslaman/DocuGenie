@@ -1,6 +1,11 @@
 import { RuleNode } from "@/utils/rete-network";
 import { PGliteWorker } from "@electric-sql/pglite/worker";
 
+/**
+ * Inserts a root rule node into the database.
+ * @param pg - The PGliteWorker instance.
+ * @param ruleNode - The RuleNode to insert.
+ */
 export async function insertRootRuleNode(pg: PGliteWorker, ruleNode: RuleNode) {
     const jsonRule = JSON.parse(ruleNode.toJSON());
     const conditions = JSON.stringify(jsonRule.conditions);
@@ -33,6 +38,12 @@ export async function insertRootRuleNode(pg: PGliteWorker, ruleNode: RuleNode) {
     }
 }
 
+/**
+ * Inserts a child rule node into the database.
+ * @param pg - The PGliteWorker instance.
+ * @param ruleNode - The RuleNode to insert.
+ * @param parentId - The ID of the parent rule node.
+ */
 export async function insertChildRuleNode(pg: PGliteWorker, ruleNode: RuleNode, parentId: string) {
     const jsonRule = JSON.parse(ruleNode.toJSON());
     const conditions = JSON.stringify(jsonRule.conditions);
@@ -64,6 +75,11 @@ export async function insertChildRuleNode(pg: PGliteWorker, ruleNode: RuleNode, 
     }
 }
 
+/**
+ * Retrieves all rule nodes from the database.
+ * @param pg - The PGliteWorker instance.
+ * @returns An array of RuleNode objects.
+ */
 export async function getAllRuleNodes(pg: PGliteWorker) {
     const query = `
         WITH RECURSIVE rule_tree AS (
@@ -113,6 +129,11 @@ export async function getAllRuleNodes(pg: PGliteWorker) {
     }));
 }
 
+/**
+ * Retrieves all root rules from the database.
+ * @param pg - The PGliteWorker instance.
+ * @returns An array of RuleNode objects.
+ */
 export async function getRootRules(pg: PGliteWorker) {
     const query = `
         WITH RECURSIVE rule_tree AS (
@@ -149,6 +170,12 @@ export async function getRootRules(pg: PGliteWorker) {
     return rootNodes;
 }
 
+/**
+ * Removes a rule node from the database.
+ * @param pg - The PGliteWorker instance.
+ * @param nodeId - The ID of the rule node to remove.
+ * @param parentId - The ID of the parent rule node.
+ */
 export async function removeRuleNode(pg: PGliteWorker, nodeId: string, parentId: string) {
     await pg.query('BEGIN');
 
@@ -173,16 +200,28 @@ export async function removeRuleNode(pg: PGliteWorker, nodeId: string, parentId:
     }
 }
 
+/**
+ * Updates a rule node in the database.
+ * @param pg - The PGliteWorker instance.
+ * @param nodeId - The ID of the rule node to update.
+ * @param updatedFields - The updated fields for the rule node.
+ * @param parentId - The ID of the parent rule node.
+ */
 export async function updateRuleNode(pg: PGliteWorker, nodeId: string, updatedFields: RuleNode, parentId: string) {
     await pg.query('BEGIN');
     try {
         const conditions = JSON.stringify(updatedFields.conditions);
         let template = `UPDATE rules SET name = $1, conditions = $2, action = $3, salience = $4`;
+
         if (parentId) {
             template += `, parent_id = $5`;
+            template += ` WHERE id = $6`;
+            await pg.query(template, [updatedFields.name, conditions, updatedFields.actionValue, updatedFields.salience, parentId, nodeId]);
+        } else {
+            template += ` WHERE id = $5`;
+            await pg.query(template, [updatedFields.name, conditions, updatedFields.actionValue, updatedFields.salience, nodeId]);
         }
-        template += ` WHERE id = $6`;
-        await pg.query(template, [updatedFields.name, conditions, updatedFields.actionValue, updatedFields.salience, parentId, nodeId]);
+
         await pg.query('COMMIT');
     } catch (error) {
         await pg.query('ROLLBACK');
@@ -193,6 +232,12 @@ export async function updateRuleNode(pg: PGliteWorker, nodeId: string, updatedFi
     }
 }
 
+/**
+ * Retrieves a rule node by its ID from the database.
+ * @param pg - The PGliteWorker instance.
+ * @param id - The ID of the rule node to retrieve.
+ * @returns An array of RuleNode objects.
+ */
 export async function getRuleById(pg: PGliteWorker, id: string) {
     const query = `
         WITH RECURSIVE rule_tree AS (
@@ -234,6 +279,11 @@ export async function getRuleById(pg: PGliteWorker, id: string) {
     }));
 }
 
+/**
+ * Removes the parent of a rule node from the database.
+ * @param pg - The PGliteWorker instance.
+ * @param nodeId - The ID of the rule node to remove the parent from.
+ */
 export async function removeParent(pg: PGliteWorker, nodeId: string) {
     await pg.query('BEGIN');
     try {

@@ -16,6 +16,7 @@ import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogicEngine } from "json-logic-engine";
 import { RuleNode } from "@/utils/rete-network";
+import { getTotalPages } from "@/utils/db/db-documents";
 
 export const formSchema = z.object({
     description: z.string().min(2),
@@ -25,7 +26,7 @@ export const formSchema = z.object({
         open: z.boolean(),
     })),
     page: z.coerce.number().min(0),
-    previous_rule: z.string(),
+    previous_rule: z.coerce.string(),
     priority: z.coerce.number().min(0),
 });
 
@@ -39,6 +40,8 @@ export function EditRuleForm() {
     const [value, setValue] = useState<string>();
     const [conditionOpen, setConditionOpen] = useState(false);
     const [condition, setCondition] = useState('');
+    const [isDirty, setIsDirty] = useState(false);
+    const [maxPage, setMaxPage] = useState(0)
 
     const logicEngine = new LogicEngine();
     logicEngine.addMethod("find", ([str, keyword]: [string, string]) => new RegExp(`\\b${keyword}\\b`, 'i').test(str));
@@ -90,6 +93,15 @@ export function EditRuleForm() {
     }, []);
 
     useEffect(() => {
+        window.onbeforeunload = beforeUnloadListener;
+    }, []);
+
+    const beforeUnloadListener = (event: any) => {
+        event.preventDefault();
+        return event.returnValue = "Are you sure you want to exit?";
+    };
+
+    useEffect(() => {
         const fetchRule = async () => {
             try {
                 if (!db.current) {
@@ -98,6 +110,7 @@ export function EditRuleForm() {
                 if (ruleId) {
                     const rules = await getAllRuleNodes(db.current);
                     const ruleData = rules.find((rule) => rule.id === ruleId);
+                    setMaxPage(await getTotalPages(db.current))
 
                     if (ruleData) {
                         const conditions = ruleData.rule.conditions.map((condition: any) => ({
@@ -141,6 +154,7 @@ export function EditRuleForm() {
     };
 
     return (
+        maxPage > 0 ?
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">
                 <FormField
@@ -161,7 +175,7 @@ export function EditRuleForm() {
                                             data-testid="from-rule-button"
                                         >
                                             {value && rules.find((rule: Rules) => rule.id === value)
-                                                ? rules.find((rule) => rule.id === value)?.rule.name 
+                                                ? rules.find((rule) => rule.id === value)?.rule.name
                                                 : "Select a rule..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -211,7 +225,7 @@ export function EditRuleForm() {
                         <FormItem>
                             <FormLabel data-testid="rule-description-label">Rule description</FormLabel>
                             <FormControl>
-                                <Input placeholder="Rule description" {...field} data-testid="rule-description-input"/>
+                                <Input placeholder="Rule description" {...field} data-testid="rule-description-input" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -295,15 +309,18 @@ export function EditRuleForm() {
                         </FormItem>
                     )}
                 />
-                                <FormField
+                <FormField
                     control={form.control}
                     name="page"
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel data-testid="return-page-label">Page</FormLabel>
                             <FormControl>
-                                <Input type="number" {...field} data-testid="return-page-input" />
+                                <Input type="number" {...field} data-testid="return-page-input" max={maxPage} />
                             </FormControl>
+                            <FormDescription>
+                                The max value is the total number of pages ({maxPage}).
+                            </FormDescription>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -322,7 +339,7 @@ export function EditRuleForm() {
                     )}
                 />
                 <Button type="submit">Update Rule</Button>
-            </form>
-        </Form>
+                </form>
+            </Form> : <div>No pages found</div>
     );
 }

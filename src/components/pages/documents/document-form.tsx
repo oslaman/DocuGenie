@@ -17,7 +17,7 @@ import { Rules, WorkerMessageEvent } from '@/utils/interfaces';
 import { getDB, initSchema, countRows, getDbData, clearDb, getDbSizeInBytes } from '@/utils/db/db-helper';
 import { getAllRuleNodes } from '@/utils/db/db-rules';
 import { seedDb, seedSingleDb} from '@/utils/db/db-documents';
-
+import { formatBytes } from '@/utils/helpers';
 import ChatWorker from '@/workers/worker.js?worker';
 
 import '@/App.css';
@@ -27,7 +27,7 @@ export default function DocumentForm() {
     const [progress, setProgress] = React.useState(0);
     const [dbRows, setDbRows] = useState<number>(0);
     const [rules, setRulesItems] = useState<Rules[]>([]);
-    const [dbSize, setDbSize] = useState<number>(0);
+    const [dbSize, setDbSize] = useState<string>("0");
     const setRules = (value: Rules[]) => {
         setRulesItems(value);
     }
@@ -42,8 +42,8 @@ export default function DocumentForm() {
             db.current = await getDB();
             await initSchema(db.current);
             const count = await countRows(db.current, "embeddings");
-            //const size = await getDbSizeInBytes(db.current);
-            const size = 0;
+            const size = await getDbSizeInBytes(db.current);
+            // const size = 0;
             const allNodes = await getAllRuleNodes(db.current);
             console.log("All nodes: ", allNodes.map((node) => JSON.parse(node.rule.toJSON()).conditions));
             setRules([]);
@@ -52,7 +52,7 @@ export default function DocumentForm() {
                 rule: node.rule,
                 parent: node.parent !== null ? node.parent.toString() : ''
             })));            setDbRows(count);
-            setDbSize(size);
+            setDbSize(formatBytes(size));
             console.log(`Found ${count} rows`);
         };
         if (!db.current && !initailizing.current) {
@@ -262,7 +262,7 @@ export default function DocumentForm() {
                 <CardHeader className="p-4 pb-0">
                     <CardTitle>Database Info</CardTitle>
                     <CardDescription>
-                        Database size: {dbSize} bytes
+                        Database size: {dbSize}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-row items-baseline gap-4 p-4 pt-0 w-full">

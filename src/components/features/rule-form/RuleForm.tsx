@@ -24,6 +24,7 @@ import { Rules } from "@/utils/interfaces";
 import { X } from "lucide-react"
 import { getDB } from '@/utils/db/db-helper';
 import { getAllRuleNodes, insertRootRuleNode, insertChildRuleNode } from '@/utils/db/db-rules';
+import { getTotalPages } from "@/utils/db/db-documents";
 
 const formSchema = z.object({
     description: z.string().min(2),
@@ -49,6 +50,7 @@ export function RuleForm() {
     const [condition, setCondition] = useState("")
     const { rules, setRules } = useRulesContext();
     const [ruleConditions, setRuleConditions] = useState<{ type: string, value: string, open: boolean }[]>([]);
+    const [maxPage, setMaxPage] = useState(0);
     const db = useRef<any>(null);
 
     const logicEngine = new LogicEngine();
@@ -127,7 +129,21 @@ export function RuleForm() {
         setup();
     }, [db]);
 
+    useEffect(() => {
+        const getMaxPages = async () => {
+            if (db.current) {
+                setMaxPage(await getTotalPages(db.current))
+            } else {
+                db.current = await getDB()
+                setMaxPage(await getTotalPages(db.current))
+            }
+        };
+        
+        getMaxPages();
+    }, [maxPage])
+
     return (
+        maxPage > 0 ?
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">
                 <FormField
@@ -243,7 +259,7 @@ export function RuleForm() {
                                                                 key={conditionName}
                                                                 value={conditionName}
                                                                 onSelect={() => {
-                                                                    updateRule(index, 'type', conditionName, ruleCondition.open)
+                                                                    updateRule(index, 'type', conditionName, !ruleCondition.open)
                                                                     console.log("Rule condition: ", ruleCondition)
                                                                 }}
                                                             >
@@ -299,10 +315,11 @@ export function RuleForm() {
                                     min={0}
                                     placeholder="Page number"
                                     {...field}
+                                    max={maxPage}
                                 />
                             </FormControl>
                             <FormDescription>
-                                The max value is the total number of pages.
+                                The max value is the total number of pages ({maxPage}).
                             </FormDescription>
                             <FormMessage />
                         </FormItem>
@@ -331,6 +348,6 @@ export function RuleForm() {
                 />
                 <Button type="submit">Add rule</Button>
             </form>
-        </Form>
+        </Form> : <div>No pages found</div>
     );
 }
