@@ -6,7 +6,8 @@ import { LogicEngine } from 'json-logic-engine'
 export class RuleNode {
     name: string;
     conditions: any;
-    actionValue: number;
+    prompt: string = 'Based on the context, answer the following question.';
+    page: number = 0;
     children: RuleNode[];
     salience: number;
     timestamp: number;
@@ -17,18 +18,20 @@ export class RuleNode {
      * Constructs a RuleNode instance.
      * @param name - The name of the rule.
      * @param conditions - The conditions that must be satisfied for the rule.
-     * @param actionValue - The action value to execute if the rule is satisfied.
+     * @param prompt - The prompt to execute if the rule is satisfied.
      * @param salience - The priority of the rule (default is 0).
      */
     constructor(
         name: string,
         conditions: any,
-        actionValue: number,
+        prompt: string,
+        page: number,
         salience: number = 0
     ) {
         this.name = name;
         this.conditions = conditions;
-        this.actionValue = actionValue;
+        this.prompt = prompt;
+        this.page = page;
         this.children = [];
         this.salience = salience;
         this.timestamp = Date.now();
@@ -93,7 +96,8 @@ export class RuleNode {
         return JSON.stringify({
             name: this.name,
             conditions: this.conditions,
-            action: this.actionValue,
+            prompt: this.prompt,
+            page: this.page,
             salience: this.salience
         });
     }
@@ -105,7 +109,7 @@ export class RuleNode {
      */
     static fromJSON(json: string): RuleNode {
         const obj = JSON.parse(json);
-        return new RuleNode(obj.name, obj.conditions, obj.action, obj.salience);
+        return new RuleNode(obj.name, obj.conditions, obj.prompt, obj.page, obj.salience);
     }
 }
 
@@ -134,9 +138,9 @@ export class RulesEngine {
     /**
      * Evaluates all root rules against the provided facts.
      * @param facts - The facts to evaluate the rules against.
-     * @returns The action value of the most salient satisfied rule, or undefined if no rules are satisfied.
+     * @returns The prompt and action value (page) of the most salient satisfied rule, or undefined if no rules are satisfied.
      */
-    evaluate(facts: Record<string, any>): number | undefined {
+    evaluate(facts: Record<string, any>): {prompt: string, page: number} | undefined {
         const satisfiedRules: RuleNode[] = [];
 
         this.rootRules.forEach(rule => {
@@ -155,7 +159,7 @@ export class RulesEngine {
                 return b.salience - a.salience;
             })[0];
             console.log(`Rule ${selectedRule.name} is executed.`);
-            return selectedRule.actionValue;
+            return {prompt: selectedRule.prompt, page: selectedRule.page};
         } else {
             console.log('No rules were satisfied.');
         }

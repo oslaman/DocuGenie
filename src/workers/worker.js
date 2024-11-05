@@ -77,6 +77,8 @@ self.addEventListener('message', async (event) => {
         status: 'search_complete',
         query: data.query,
         embedding,
+        prompt: data.prompt,
+        page: data.page
       });
       const t1 = performance.now();
       console.log(`Search completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
@@ -87,11 +89,15 @@ self.addEventListener('message', async (event) => {
       let generator = await TextGenerationSingleton.getInstance((x) => {
         self.postMessage(x);
       });
-      const system_prompt = "Context information is below.\n\n" +
+
+      const prompt = data.prompt || "Based on the context, answer the following question.";
+      
+      const system_prompt = "Context information is below. The pages are context and the pages are in order respectively, so you can use them to answer the question. Mention the page number in your answer.\n\n" +
         "---------------------\n" +
         data.context + "\n" +
         "---------------------\n" +
-        "Given the context information and not prior knowledge, answer the query.\n";
+        prompt;
+
 
       const user_prompt = "Query: " + data.query + "\n Your answer: ";
       const messages = [
@@ -132,13 +138,21 @@ self.addEventListener('message', async (event) => {
       console.log(`Text generation completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
       break;
     }
-    case 'search_with_pages': {
-      console.log('Search with pages:', data.pages);
+    case 'search_with_page': {
+      console.log('Search with page:', data.page);
       self.postMessage({
         status: 'search_with_pages_complete',
         query: data.query,
-        pages: data.pages,
+        page: data.page,
       });
+      break;
+    }
+    case 'search_with_prompt': {
+      console.log('Search with prompt:', data.prompt);
+      break;
+    }
+    case 'search_basic': {
+      console.log('Search basic:', data.query);
       break;
     }
   }

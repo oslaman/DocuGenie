@@ -16,9 +16,11 @@ import { Rules, WorkerMessageEvent } from '@/utils/interfaces';
 
 import { getDB, initSchema, countRows, getDbData, clearDb, getDbSizeInBytes } from '@/utils/db/db-helper';
 import { getAllRuleNodes } from '@/utils/db/db-rules';
-import { seedDb, seedSingleDb} from '@/utils/db/db-documents';
+import { seedDb, seedSingleDb } from '@/utils/db/db-documents';
 import { formatBytes } from '@/utils/helpers';
 import ChatWorker from '@/workers/worker.js?worker';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Info } from "lucide-react"
 
 import '@/App.css';
 
@@ -51,7 +53,7 @@ export default function DocumentForm() {
                 id: node.id,
                 rule: node.rule,
                 parent: node.parent !== null ? node.parent.toString() : ''
-            })));            setDbRows(count);
+            }))); setDbRows(count);
             setDbSize(formatBytes(size));
             console.log(`Found ${count} rows`);
         };
@@ -236,26 +238,76 @@ export default function DocumentForm() {
         }
     };
     return (
-        <div className="dashboard-container w-full flex flex-row gap-4">
-            <div className='flex flex-col gap-4 w-full'>
-                <div className="file-upload">
-                    <Label htmlFor="pages-upload">Upload of JSON with text and page number for each page. The chunking and embedding will be done automatically.</Label>
+        <>
+            <form className='w-full space-y-6 md:w-2/3'>
+            <div className='grid w-full items-center gap-4'>
+                <div className="grid grid-cols-[1fr,auto] items-center gap-2">
+                    <Label htmlFor="pages-upload">
+                        Upload JSON with text and page number for each page.
+                    </Label>
+                    <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                                 </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>The chunking and embedding will be created automatically.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     <Input type="file" id="pages-upload" onChange={handlePagesUpload} />
                 </div>
-                <div className="file-upload">
-                    <Label htmlFor="file-upload">Upload of JSON with chunks and page numbers. The embedding will be done automatically.</Label>
+                <div className="grid grid-cols-[1fr,auto] items-center gap-2">
+                    <Label htmlFor="file-upload">
+                        Upload of JSON with chunks and page numbers.
+                    </Label>
+                    <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>The embedding will be created automatically.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     <Input type="file" id="file-upload" onChange={handleFileUpload} />
                 </div>
-                <div className="file-upload">
-                    <Label htmlFor="embeddings-upload">Upload of JSON with chunks, page numbers and embeddings. The embedding are already done and will not be done automatically.</Label>
+                <div className="grid grid-cols-[1fr,auto] items-center gap-2">
+                    <Label htmlFor="embeddings-upload">
+                        Upload of JSON with chunks, page numbers and embeddings.
+                    </Label>
+                    <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>The embedding are already done and will not be created automatically.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     <Input type="file" id="embeddings-upload" multiple onChange={handleEmbeddingsUpload} />
                 </div>
-                <div className="file-upload">
-                    <Label htmlFor="embeddings-upload">Upload of multiple JSONs with a chunk, page number and embeddings each. The embedding are already done and will not be done automatically.</Label>
+                <div className="grid grid-cols-[1fr,auto] items-center gap-2">
+                    <Label htmlFor="embeddings-upload">
+                        Upload of multiple JSONs with a chunk, page number and embeddings each.
+                    </Label>
+                    <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>The embedding are already done and will not be created automatically.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     <Input type="file" id="embeddings-upload" multiple onChange={handleMultipleEmbeddingsUpload} />
                 </div>
+                </div>
                 <Progress value={progress} />
-            </div>
+            </form>
             <Card
                 className="max-w-xs h-fit w-full" x-chunk="charts-01-chunk-3"
             >
@@ -275,6 +327,6 @@ export default function DocumentForm() {
                     <Button onClick={cleanDatabase}>Clear Database</Button>
                 </CardContent>
             </Card>
-        </div>
+        </>
     );
 }

@@ -52,7 +52,8 @@ export const initSchema = async (pg: PGliteWorker) => {
         id serial primary key,
         name text not null,
         conditions text not null,
-        action text not null,
+        page integer not null,
+        prompt text not null,
         salience integer not null,
         parent_id integer references rules(id),
         created_at timestamp default current_timestamp

@@ -6,8 +6,9 @@ export interface WorkerMessageEvent extends MessageEvent {
         status: string;
         embedding?: any;
         output?: string;
-        pages?: number;
+        page?: number;
         isFinal?: boolean;
+        prompt?: string;
     };
 }
 

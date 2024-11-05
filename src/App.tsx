@@ -4,6 +4,7 @@ import Header from '@/components/layout/Header';
 import Home from '@/components/pages/Home';
 import Settings from '@/components/pages/Settings';
 import ErrorPage from "@/components/pages/error-page";
+import { Toaster } from "@/components/ui/sonner";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -20,6 +21,7 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <RouterProvider router={router}/>
+      <Toaster />
     </ThemeProvider>
   );
 }
