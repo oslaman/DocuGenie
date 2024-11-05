@@ -135,12 +135,14 @@ export const columns: ColumnDef<RuleItems>[] = [
             <DropdownMenuItem
               onClick={async () => {
                 const db = await getDB();
-                await removeRuleNode(db, rule.id, rule.parent);
-                const updatedRules = rules.filter((ruleItem: Rules) => ruleItem.id !== rule.id);
-                setRules(updatedRules);
-                toast("Rule deleted", {
-                  description: new Date().toLocaleString(),
-              })
+                try {
+                  await removeRuleNode(db, rule.id, rule.parent);
+                  const updatedRules = rules.filter((ruleItem: Rules) => ruleItem.id !== rule.id);
+                  setRules(updatedRules);
+                  toast.success(`Rule "${rule.id}" deleted.`)
+                } catch (error) {
+                  toast.error(`Error deleting rule "${rule.id}".`)
+                }
               }}
 
               className="text-red-500"

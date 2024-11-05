@@ -18,6 +18,7 @@ import { LogicEngine } from "json-logic-engine";
 import { RuleNode } from "@/utils/rete-network";
 import { getTotalPages } from "@/utils/db/db-documents";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 export const formSchema = z.object({
     description: z.string().min(2),
@@ -98,13 +99,20 @@ export function EditRuleForm() {
     }, []);
 
     useEffect(() => {
-        isDirty && (window.onbeforeunload = beforeUnloadListener);
+        if (isDirty) {
+            window.addEventListener('beforeunload', beforeUnloadListener);
+            
+            return () => {
+                window.removeEventListener('beforeunload', beforeUnloadListener);
+            };
+        }
     }, [isDirty]);
 
-    const beforeUnloadListener = (event: any) => {
+    const beforeUnloadListener = useCallback((event: BeforeUnloadEvent) => {
         event.preventDefault();
-        return event.returnValue = "Are you sure you want to exit?";
-    };
+        event.returnValue = "Are you sure you want to exit?";
+        return event.returnValue;
+    }, []);
 
     useEffect(() => {
         const fetchRule = async () => {
@@ -156,14 +164,19 @@ export function EditRuleForm() {
     }, [ruleId, form]);
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        const conditions = ruleConditions.map((ruleCondition) => ({
-            [ruleCondition.type]: [{ "var": "query" }, ruleCondition.value]
-        }));
-        const rule = new RuleNode(values.description, conditions, values.prompt, values.page, values.priority);
-        if (ruleId) {
-            await updateRuleNode(db.current, ruleId, rule, values.previous_rule);
-            console.log("Rule updated:", values);
-            window.location.href = "/settings/rules";
+        try {
+            const conditions = ruleConditions.map((ruleCondition) => ({
+                [ruleCondition.type]: [{ "var": "query" }, ruleCondition.value]
+            }));
+            const rule = new RuleNode(values.description, conditions, values.prompt, values.page, values.priority);
+            if (ruleId) {
+                await updateRuleNode(db.current, ruleId, rule, values.previous_rule);
+                console.log("Rule updated:", values);
+                window.location.href = "/settings/rules";
+            }
+            toast.success('Rule updated.')
+        } catch (error) {
+            toast.error('Error updating rule.')
         }
     };
 

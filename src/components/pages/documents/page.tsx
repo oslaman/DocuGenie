@@ -1,6 +1,6 @@
 import { Separator } from "@/components/ui/separator";
 import DocumentForm from "./document-form";
-import PageExcluder from "@/components/features/page-exclude/page-excluder";
+
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -13,27 +13,24 @@ import {
 export default function DocumentsPage() {
     return (
         <div className="space-y-6">
-            <div>
-                <Breadcrumb>
-                    <BreadcrumbList>
-                        <BreadcrumbItem>
-                            <BreadcrumbPage>Settings</BreadcrumbPage>
-                        </BreadcrumbItem>
-                        <BreadcrumbSeparator />
-                        <BreadcrumbItem>
-                            <BreadcrumbPage>Documents</BreadcrumbPage>
-                        </BreadcrumbItem>
-                    </BreadcrumbList>
-                </Breadcrumb>
+            <Breadcrumb>
+                <BreadcrumbList>
+                    <BreadcrumbItem>
+                        <BreadcrumbPage>Settings</BreadcrumbPage>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                        <BreadcrumbPage>Documents</BreadcrumbPage>
+                    </BreadcrumbItem>
+                </BreadcrumbList>
+            </Breadcrumb>
 
-                <h3 className="text-lg font-medium">Documents</h3>
-                <p className="text-sm text-muted-foreground">
-                    Update your documents settings.
-                </p>
-            </div>
+            <h3 className="text-lg font-medium">Documents</h3>
+            <p className="text-sm text-muted-foreground">
+                Update your documents settings.
+            </p>
             <Separator />
             <DocumentForm />
-            <PageExcluder />
         </div>
     );
 }

@@ -36,11 +36,10 @@ export const initSchema = async (pg: PGliteWorker) => {
       create extension if not exists ltree;
       create extension if not exists adminpack;
 
-      -- drop table if exists embeddings;
+      -- drop table if exists chunks;
       -- drop table if exists rules;
-      drop table if exists foo;
 
-      create table if not exists embeddings (
+      create table if not exists chunks (
         id bigint primary key generated always as identity,
         page_id integer,
         chunk_id integer,
@@ -59,8 +58,8 @@ export const initSchema = async (pg: PGliteWorker) => {
         created_at timestamp default current_timestamp
       );
 
-      create index on embeddings using hnsw (embedding vector_ip_ops);
-      create index on embeddings using gin (content gin_trgm_ops); -- Index per BM25
+      create index if not exists chunks_hnsw on chunks using hnsw (embedding vector_ip_ops);
+      create index if not exists chunks_gin on chunks using gin (content gin_trgm_ops); -- Index per BM25
     `);
 };
 
@@ -80,18 +79,28 @@ export const countRows = async (pg: PGliteWorker, table: string) => {
  * @param pg - The PGliteWorker instance.
  */
 export const clearDb = async (pg: PGliteWorker) => {
-    await pg.query(`drop table if exists embeddings;`);
+    await pg.query(`drop table if exists chunks;`);
     await pg.query(`drop table if exists rules;`);
     await initSchema(pg);
 };
 
 /**
- * Retrieves all data from the embeddings table.
+ * Clears a table and reinitializes the schema.
  * @param pg - The PGliteWorker instance.
- * @returns The data from the embeddings table.
+ * @param table - The name of the table to clear.
+ */
+export const clearTable = async (pg: PGliteWorker, table: string) => {
+    await pg.query(`truncate table ${table} cascade;`);
+    await initSchema(pg);
+};
+
+/**
+ * Retrieves all data from the chunks table.
+ * @param pg - The PGliteWorker instance.
+ * @returns The data from the chunks table.
  */
 export const getDbData = async (pg: PGliteWorker) => {
-    const res = await pg.query(`SELECT * FROM embeddings;`);
+    const res = await pg.query(`SELECT * FROM chunks;`);
     return res.rows;
 };
 

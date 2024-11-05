@@ -154,7 +154,7 @@ const RulesTree: React.FC = () => {
         (deleted: any[]) => {
             console.log("Nodes deleted", deleted);
             setEdges(
-                deleted.reduce((acc: Edge[], node: Node) => {
+                deleted.reduce(async (acc: Edge[], node: Node) => {
                     const incomers = getIncomers(node, nodes, edges);
                     const outgoers = getOutgoers(node, nodes, edges);
                     const connectedEdges = getConnectedEdges([node], edges);
@@ -176,12 +176,13 @@ const RulesTree: React.FC = () => {
                     console.log("Deleted nodes", deleted);
                     console.log("Node to be deleted", deleted[0]);
 
-                    removeRuleNode(db.current, deleted[0].data.rule.id, deleted[0].data.rule.parent.toString());
-                    setTableData((tableData) => tableData.filter((t) => t.id !== deleted[0].id));
-
-                    toast(`Rule ${deleted[0].data.rule.id} deleted`, {
-                        description: new Date().toLocaleString(),
-                    })
+                    try {
+                        await removeRuleNode(db.current, deleted[0].data.rule.id, deleted[0].data.rule.parent.toString());
+                        setTableData((tableData) => tableData.filter((t) => t.id !== deleted[0].id));
+                        toast.success(`Rule "${deleted[0].data.rule.id}" deleted.`)
+                    } catch (error) {
+                        toast.error(`Error deleting rule "${deleted[0].data.rule.id}".`)
+                    }
 
                     // remove node from rules
                     // this should remove the node from the rules array, but messes up the tree layout
