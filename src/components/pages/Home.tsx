@@ -72,7 +72,7 @@ const Home: React.FC = () => {
       initailizing.current = true;
       db.current = await getDB();
       await initSchema(db.current);
-      const count = await countRows(db.current, "embeddings");
+      const count = await countRows(db.current, "chunks");
       console.log(`Found ${count} rows`);
     };
     if (!db.current && !initailizing.current) {
@@ -156,7 +156,7 @@ const Home: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 p-2 pb-16 md:block md:p-10">
+    <div className="space-y-6 p-5 pb-16 md:block md:p-10">
       <div className="space-y-0.5 p-2">
         <h2 className="text-2xl font-bold tracking-tight">DocuGenie</h2>
         <p className="text-muted-foreground">

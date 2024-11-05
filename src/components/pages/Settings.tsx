@@ -8,6 +8,7 @@ import { EditRuleForm } from '@/components/features/rule-form/EditRuleForm';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import DocumentsPage from './documents/page';
 import RulesPage from './rules/page';
+import GeneralSettingsPage from './general-settings/page';
 import { useParams } from 'react-router-dom';
 
 import '@/App.css';
@@ -18,6 +19,8 @@ const Settings = () => {
 
     const renderPage = () => {
         switch (location.pathname) {
+            case "/settings/general":
+                return <GeneralSettingsPage />;
             case "/settings/documents":
                 return <DocumentsPage />;
             case "/settings/rules":

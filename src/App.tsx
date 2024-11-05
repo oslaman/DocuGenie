@@ -12,7 +12,7 @@ const router = createBrowserRouter(
       <Route index element={<Home />} errorElement={<ErrorPage />}/>
       <Route path="/settings/*" element={<Settings />} errorElement={<ErrorPage />}/>
       <Route path="/settings/rules/:ruleId" element={<Settings />} errorElement={<ErrorPage />}/>
-      <Route path="*" element={<div>Not found</div>} errorElement={<ErrorPage />}/>
+      <Route path="*" element={<div>Page not found</div>} errorElement={<ErrorPage />}/>
     </Route>
   )
 )

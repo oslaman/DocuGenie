@@ -1,5 +1,6 @@
 import { RuleNode } from "@/utils/rete-network";
 import { PGliteWorker } from "@electric-sql/pglite/worker";
+import { initSchema } from "@/utils/db/db-helper";
 
 /**
  * Inserts a root rule node into the database.
@@ -300,4 +301,14 @@ export async function removeParent(pg: PGliteWorker, nodeId: string) {
     } finally {
         console.log("Removed parent: ", nodeId);
     }
+}
+
+/**
+ * Retrieves the total number of rules in the database.
+ * @param pg - The PGliteWorker instance.
+ * @returns The total number of rules.
+ */
+export const getTotalRules = async (pg: PGliteWorker) => {
+    const totalRules: any = await pg.query(`SELECT COUNT(*) FROM rules`);
+    return totalRules.rows[0].count;
 }

@@ -1,15 +1,15 @@
 import { PGliteWorker } from "@electric-sql/pglite/worker";
 
 /**
- * Seeds the database with embeddings.
+ * Seeds the database with chunks.
  * @param pg - The PGliteWorker instance.
- * @param embeddings - The embeddings to seed the database with.
+ * @param chunks - The chunks to seed the database with.
  * @param batchSize - The size of each batch to insert (default is 500).
  */
-export const seedDb = async (pg: PGliteWorker, embeddings: any[], batchSize = 500) => {
-    console.log("Seeding DB: ", embeddings);
-    for (let i = 0; i < embeddings.length; i += batchSize) {
-        const batch = embeddings.slice(i, i + batchSize);
+export const seedDb = async (pg: PGliteWorker, chunks: any[], batchSize = 500) => {
+    console.log("Seeding DB: ", chunks);
+    for (let i = 0; i < chunks.length; i += batchSize) {
+        const batch = chunks.slice(i, i + batchSize);
         const values = batch.map((embedding, index) =>
             `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4})`
         ).join(", ");
@@ -23,7 +23,7 @@ export const seedDb = async (pg: PGliteWorker, embeddings: any[], batchSize = 50
 
         await pg.query(
             `
-            INSERT INTO embeddings (page_id, chunk_id, content, embedding)
+            INSERT INTO chunks (page_id, chunk_id, content, embedding)
             VALUES ${values};
             `,
             params
@@ -34,14 +34,14 @@ export const seedDb = async (pg: PGliteWorker, embeddings: any[], batchSize = 50
 /**
  * Seeds the database with a single embedding.
  * @param pg - The PGliteWorker instance.
- * @param embeddings - The embedding to seed the database with.
+ * @param chunks - The embedding to seed the database with.
  * @param batchSize - The size of each batch to insert (default is 500).
  */
-export const seedSingleDb = async (pg: PGliteWorker, embeddings: any[], batchSize = 500) => {
-    console.log("Seeding DB: ", embeddings);
+export const seedSingleDb = async (pg: PGliteWorker, chunks: any[], batchSize = 500) => {
+    console.log("Seeding DB: ", chunks);
     const t1 = performance.now();
-    for (let i = 0; i < embeddings.length; i += batchSize) {
-        const batch = embeddings.slice(i, i + batchSize);
+    for (let i = 0; i < chunks.length; i += batchSize) {
+        const batch = chunks.slice(i, i + batchSize);
         const values = batch.map((embedding, index) =>
             `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4})`
         ).join(", ");
@@ -50,7 +50,7 @@ export const seedSingleDb = async (pg: PGliteWorker, embeddings: any[], batchSiz
 
         await pg.query(
             `
-            INSERT INTO embeddings (page_id, chunk_id, content, embedding)
+            INSERT INTO chunks (page_id, chunk_id, content, embedding)
             VALUES ${values};
             `,
             params
@@ -61,7 +61,7 @@ export const seedSingleDb = async (pg: PGliteWorker, embeddings: any[], batchSiz
 }
 
 /**
- * Searches the database for embeddings matching a query.
+ * Searches the database for chunks matching a query.
  * @param pg - The PGliteWorker instance.
  * @param embedding - The embedding to search for.
  * @param query - The query to search for.
@@ -78,9 +78,9 @@ export const search = async (
     let vectorResults;
     vectorResults = await pg.query(
         `
-          select * from embeddings
-          where embeddings.embedding <#> $1 < $2
-          order by embeddings.embedding <#> $1
+          select * from chunks
+          where chunks.embedding <#> $1 < $2
+          order by chunks.embedding <#> $1
           limit $3;
           `,
         [JSON.stringify(embedding), -Number(match_threshold), Number(limit)],
@@ -89,7 +89,7 @@ export const search = async (
     const bm25Results = await pg.query(
         `
       select *, ts_rank_cd(to_tsvector(content), plainto_tsquery($1)) as rank
-      from embeddings
+      from chunks
       where to_tsvector(content) @@ plainto_tsquery($1)
       order by rank desc
       limit $2;
@@ -108,7 +108,7 @@ export const search = async (
 };
 
 /**
- * Searches the database for embeddings matching a query and page number.
+ * Searches the database for chunks matching a query and page number.
  * @param pg - The PGliteWorker instance.
  * @param query - The query to search for.
  * @param page - The page number to search for.
@@ -122,8 +122,8 @@ export const searchWithPage = async (
 ) => {
     const results = await pg.query(
         `
-        select * from embeddings
-        where embeddings.page_id = $1
+        select * from chunks
+        where chunks.page_id = $1
         `,
         [page],
     );
@@ -131,7 +131,7 @@ export const searchWithPage = async (
     const bm25Results = await pg.query(
         `
       select *, ts_rank_cd(to_tsvector(content), plainto_tsquery($1)) as rank
-      from embeddings
+      from chunks
       where to_tsvector(content) @@ plainto_tsquery($1)
       order by rank desc
       limit $2;
@@ -155,6 +155,16 @@ export const searchWithPage = async (
  * @returns The total number of pages.
  */
 export const getTotalPages = async (pg: PGliteWorker) => {
-    const totalPages: any = await pg.query(`SELECT MAX(page_id) FROM embeddings`);
+    const totalPages: any = await pg.query(`SELECT MAX(page_id) FROM chunks`);
     return totalPages.rows[0].max;
+}
+
+/**
+ * Retrieves the total number of chunks in the database.
+ * @param pg - The PGliteWorker instance.
+ * @returns The total number of chunks.
+ */
+export const getTotalChunks = async (pg: PGliteWorker) => {
+    const totalChunks: any = await pg.query(`SELECT COUNT(*) FROM chunks`);
+    return totalChunks.rows[0].count;
 }

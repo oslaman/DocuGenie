@@ -18,7 +18,6 @@ interface RulesPageProps {
 export default function RulesPage({ id }: RulesPageProps) {
     return (
         <div className="space-y-6">
-            <div>
                 <Breadcrumb>
                     <BreadcrumbList>
                         <BreadcrumbItem>
@@ -42,11 +41,11 @@ export default function RulesPage({ id }: RulesPageProps) {
                         )}
                     </BreadcrumbList>
                 </Breadcrumb>
+
                 <h3 className="text-lg font-medium">{id ? `Edit rule ${id}` : "Rules"}</h3>
                 <p className="text-sm text-muted-foreground">
                     Update your rule settings.
                 </p>
-            </div>
             <Separator />
             {id ? <EditRuleForm /> : <RulesForm />}
         </div>

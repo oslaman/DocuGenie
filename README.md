@@ -17,8 +17,6 @@ DocuGenie is a RAG-based AI app to answer document related questions. It uses PG
 
 **Machine Learning:** Transformers.js, WebLLM
 
-**Server:** Not implemented yet
-
 ## Run Locally
 
 Clone the project

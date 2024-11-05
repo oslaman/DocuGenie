@@ -101,35 +101,40 @@ export function RuleForm() {
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         console.log("Valori: ", values);
-        let rule: RuleNode;
-        let conditions: any[] = [];
-        ruleConditions.forEach((ruleCondition) => {
-            conditions.push({ [ruleCondition.type]: [{ "var": "query" }, ruleCondition.value] });
-        });
-        rule = new RuleNode(values.description, conditions, values.prompt, values.page, values.priority);
-        db.current = await getDB();
 
-        if (values.previous_rule === '') {
-            await insertRootRuleNode(db.current, rule);
-        } else {
-            await insertChildRuleNode(db.current, rule, values.previous_rule);
+        try {
+            let rule: RuleNode;
+            let conditions: any[] = [];
+            ruleConditions.forEach((ruleCondition) => {
+                conditions.push({ [ruleCondition.type]: [{ "var": "query" }, ruleCondition.value] });
+            });
+            rule = new RuleNode(values.description, conditions, values.prompt, values.page, values.priority);
+            db.current = await getDB();
+
+            if (values.previous_rule === '') {
+                await insertRootRuleNode(db.current, rule);
+            } else {
+                await insertChildRuleNode(db.current, rule, values.previous_rule);
+            }
+
+            const allNodes = await getAllRuleNodes(db.current);
+            const updatedRules = allNodes.map((node) => ({
+                id: node.id,
+                rule: node.rule,
+                parent: node.parent
+            }));
+
+            setRules(updatedRules);
+
+            form.reset(defaultValues);
+            setValue('');
+            setOpen(false);
+            toast("Rule created", {
+                description: new Date().toLocaleString(),
+            })
+        } catch (error) {
+            toast.error('Error creating rule.')
         }
-
-        const allNodes = await getAllRuleNodes(db.current);
-        const updatedRules = allNodes.map((node) => ({
-            id: node.id,
-            rule: node.rule,
-            parent: node.parent
-        }));
-
-        setRules(updatedRules);
-
-        form.reset(defaultValues);
-        setValue('');
-        setOpen(false);
-        toast("Rule created", {
-            description: new Date().toLocaleString(),
-        })
     }
 
     useEffect(() => {
