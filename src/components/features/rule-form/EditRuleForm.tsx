@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { LogicEngine } from "json-logic-engine";
 import { RuleNode } from "@/utils/rete-network";
 import { getTotalPages } from "@/utils/db/db-documents";
+import { Textarea } from "@/components/ui/textarea";
 
 export const formSchema = z.object({
     description: z.string().min(2),
@@ -25,9 +26,10 @@ export const formSchema = z.object({
         value: z.string(),
         open: z.boolean(),
     })),
-    page: z.coerce.number().min(0),
+    page: z.coerce.number(),
     previous_rule: z.coerce.string(),
     priority: z.coerce.number().min(0),
+    prompt: z.string().min(2),
 });
 
 export function EditRuleForm() {
@@ -42,6 +44,8 @@ export function EditRuleForm() {
     const [condition, setCondition] = useState('');
     const [isDirty, setIsDirty] = useState(false);
     const [maxPage, setMaxPage] = useState(0)
+
+    const [status, setStatus] = useState<Status>("loading");
 
     const logicEngine = new LogicEngine();
     logicEngine.addMethod("find", ([str, keyword]: [string, string]) => new RegExp(`\\b${keyword}\\b`, 'i').test(str));
@@ -76,6 +80,7 @@ export function EditRuleForm() {
         resolver: zodResolver(formSchema),
         defaultValues: {
             description: '',
+            prompt: '',
             page: 0,
             rule_option: [],
             previous_rule: '',
@@ -93,8 +98,8 @@ export function EditRuleForm() {
     }, []);
 
     useEffect(() => {
-        window.onbeforeunload = beforeUnloadListener;
-    }, []);
+        isDirty && (window.onbeforeunload = beforeUnloadListener);
+    }, [isDirty]);
 
     const beforeUnloadListener = (event: any) => {
         event.preventDefault();
@@ -103,6 +108,7 @@ export function EditRuleForm() {
 
     useEffect(() => {
         const fetchRule = async () => {
+            setStatus("loading");
             try {
                 if (!db.current) {
                     db.current = await getDB();
@@ -127,15 +133,23 @@ export function EditRuleForm() {
 
                         form.reset({
                             description: ruleData.rule.name,
-                            page: ruleData.rule.actionValue,
+                            prompt: ruleData.rule.prompt,
                             rule_option: conditions,
                             previous_rule: ruleData.parent || '',
                             priority: ruleData.rule.salience,
                         });
+                        setStatus("available");
+                    } else {
+                        setStatus("unavailable");
                     }
+                } else {
+                    setStatus("unavailable");
                 }
             } catch (error) {
                 console.error("Error fetching rule:", error);
+                setStatus("failed to load");
+            } finally {
+                setStatus("available");
             }
         };
         fetchRule();
@@ -145,7 +159,7 @@ export function EditRuleForm() {
         const conditions = ruleConditions.map((ruleCondition) => ({
             [ruleCondition.type]: [{ "var": "query" }, ruleCondition.value]
         }));
-        const rule = new RuleNode(values.description, conditions, values.page, values.priority);
+        const rule = new RuleNode(values.description, conditions, values.prompt, values.page, values.priority);
         if (ruleId) {
             await updateRuleNode(db.current, ruleId, rule, values.previous_rule);
             console.log("Rule updated:", values);
@@ -153,193 +167,253 @@ export function EditRuleForm() {
         }
     };
 
-    return (
-        maxPage > 0 ?
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">
-                <FormField
-                    control={form.control}
-                    name="previous_rule"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel data-testid="from-rule-label">From rule</FormLabel>
-                            <br />
-                            <FormControl>
-                                <Popover open={open} onOpenChange={setOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={open}
-                                            className="w-fit justify-between"
-                                            data-testid="from-rule-button"
-                                        >
-                                            {value && rules.find((rule: Rules) => rule.id === value)
-                                                ? rules.find((rule) => rule.id === value)?.rule.name
-                                                : "Select a rule..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[200px] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search rule..." />
-                                            <CommandList>
-                                                <CommandEmpty>No rule found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {rules.map((ruleItem) => (
-                                                        <CommandItem
-                                                            key={ruleItem.id}
-                                                            value={ruleItem.rule.name}
-                                                            onSelect={() => {
-                                                                setValue(ruleItem.id)
-                                                                setOpen(false)
-                                                                field.onChange(ruleItem.id)
-                                                            }}
+    const renderContent = () => {
+        switch (status) {
+            case "available":
+                return (
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">
+                            <FormField
+                                control={form.control}
+                                name="previous_rule"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel data-testid="from-rule-label">Parent rule</FormLabel>
+                                        <br />
+                                        <FormControl>
+                                            <Popover open={open} onOpenChange={setOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={open}
+                                                        className="w-fit justify-between"
+                                                        data-testid="from-rule-button"
+                                                    >
+                                                        {value && rules.find((rule: Rules) => rule.id === value)
+                                                            ? rules.find((rule) => rule.id === value)?.rule.name
+                                                            : "Select a parent rule..."}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[200px] p-0">
+                                                    <Command>
+                                                        <CommandInput placeholder="Search rule..." />
+                                                        <CommandList>
+                                                            <CommandEmpty>No rule found.</CommandEmpty>
+                                                            {value && (
+                                                                <CommandGroup>
+                                                                    <CommandItem
+                                                                        onSelect={() => {
+                                                                            setValue('')
+                                                                            setOpen(false)
+                                                                        }}
+                                                                        className="justify-center text-sm text-muted-foreground"
+                                                                    >
+                                                                        <X className="mr-2 h-4 w-4" />
+                                                                        Clear selection
+                                                                    </CommandItem>
+                                                                </CommandGroup>
+                                                            )}
+                                                            <CommandGroup>
+                                                                {rules.map((ruleItem) => (
+                                                                    <CommandItem
+                                                                        key={ruleItem.id}
+                                                                        value={ruleItem.rule.name}
+                                                                        onSelect={() => {
+                                                                            setValue(ruleItem.id)
+                                                                            setOpen(false)
+                                                                            field.onChange(ruleItem.id)
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                value === ruleItem.id ? "opacity-100" : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        {ruleItem.rule.name}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </FormControl>
+                                        <FormDescription>
+                                            You can only choose one parent rule.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="description"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel data-testid="rule-description-label">Rule name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Rule name" {...field} data-testid="rule-description-input" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="rule_option"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel data-testid="condition-label">Conditions</FormLabel><br />
+                                        {ruleConditions.map((ruleCondition, index) => (
+                                            <div key={index} className="flex items-center space-x-2">
+                                                <Popover open={ruleCondition.open} onOpenChange={() => updateRule(index, "type", ruleCondition.type, !ruleCondition.open)}>
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            role="combobox"
+                                                            aria-expanded={ruleCondition.open}
+                                                            className="w-fit justify-between"
                                                         >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    value === ruleItem.id ? "opacity-100" : "opacity-0"
+                                                            {ruleCondition.type
+                                                                ? allowedConditions.find((conditionName) => conditionName === ruleCondition.type)
+                                                                : "Select a condition type..."}
+                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[200px] p-0">
+                                                        <Command>
+                                                            <CommandInput placeholder="Search condition..." />
+                                                            <CommandList>
+                                                                <CommandEmpty>No condition found.</CommandEmpty>
+                                                                {ruleCondition.type && (
+                                                                    <CommandGroup>
+                                                                        <CommandItem
+                                                                            onSelect={() => {
+                                                                                updateRule(index, 'type', '', !ruleCondition.open)
+                                                                                setOpen(false)
+                                                                            }}
+                                                                            className="justify-center text-sm text-muted-foreground"
+                                                                        >
+                                                                            <X className="mr-2 h-4 w-4" />
+                                                                            Clear selection
+                                                                        </CommandItem>
+                                                                    </CommandGroup>
                                                                 )}
-                                                            />
-                                                            {ruleItem.rule.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            </FormControl>
-                            <FormDescription>
-                                You can only choose one rule.
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel data-testid="rule-description-label">Rule description</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Rule description" {...field} data-testid="rule-description-input" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="rule_option"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel data-testid="condition-label">Condition</FormLabel><br />
-                            {ruleConditions.map((ruleCondition, index) => (
-                                <div key={index} className="flex items-center space-x-2">
-                                    <Popover open={ruleCondition.open} onOpenChange={() => updateRule(index, "type", ruleCondition.type, !ruleCondition.open)}>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={ruleCondition.open}
-                                                className="w-fit justify-between"
-                                            >
-                                                {ruleCondition.type
-                                                    ? allowedConditions.find((conditionName) => conditionName === ruleCondition.type)
-                                                    : "Select a condition type..."}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[200px] p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search condition..." />
-                                                <CommandList>
-                                                    <CommandEmpty>No condition found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {allowedConditions.map((conditionName) => (
-                                                            <CommandItem
-                                                                key={conditionName}
-                                                                value={conditionName}
-                                                                onSelect={() => {
-                                                                    updateRule(index, 'type', conditionName, !ruleCondition.open)
-                                                                    console.log("Rule condition: ", ruleCondition)
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        condition === conditionName ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {conditionName}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                    <Input
-                                        type="text"
-                                        placeholder="Enter condition value"
-                                        value={ruleCondition.value}
-                                        onChange={(e) => updateRule(index, 'value', e.target.value, ruleCondition.open)}
-                                        className="flex-grow"
-                                        data-testid="condition-value-input"
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => removeRule(index)}
-                                        aria-label="Remove condition"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ))}
-                            <Button type="button" onClick={addRule}>Add condition</Button>
-                            <FormDescription>
-                                You can choose multiple conditions.
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="page"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel data-testid="return-page-label">Page</FormLabel>
-                            <FormControl>
-                                <Input type="number" {...field} data-testid="return-page-input" max={maxPage} />
-                            </FormControl>
-                            <FormDescription>
-                                The max value is the total number of pages ({maxPage}).
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="priority"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel data-testid="priority-label">Priority</FormLabel>
-                            <FormControl>
-                                <Input type="number" {...field} data-testid="priority-input" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <Button type="submit">Update Rule</Button>
-                </form>
-            </Form> : <div>No pages found</div>
+                                                                <CommandGroup>
+                                                                    {allowedConditions.map((conditionName) => (
+                                                                        <CommandItem
+                                                                            key={conditionName}
+                                                                            value={conditionName}
+                                                                            onSelect={() => {
+                                                                                updateRule(index, 'type', conditionName, !ruleCondition.open)
+                                                                                console.log("Rule condition: ", ruleCondition)
+                                                                            }}
+                                                                        >
+                                                                            <Check
+                                                                                className={cn(
+                                                                                    "mr-2 h-4 w-4",
+                                                                                    condition === conditionName ? "opacity-100" : "opacity-0"
+                                                                                )}
+                                                                            />
+                                                                            {conditionName}
+                                                                        </CommandItem>
+                                                                    ))}
+                                                                </CommandGroup>
+                                                            </CommandList>
+                                                        </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                                <Input
+                                                    type="text"
+                                                    placeholder="Enter condition value"
+                                                    value={ruleCondition.value}
+                                                    onChange={(e) => updateRule(index, 'value', e.target.value, ruleCondition.open)}
+                                                    className="flex-grow"
+                                                    data-testid="condition-value-input"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => removeRule(index)}
+                                                    aria-label="Remove condition"
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                        <Button type="button" onClick={addRule}>Add condition</Button>
+                                        <FormDescription>
+                                            You can choose multiple conditions.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="page"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel data-testid="return-page-label">Page</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" {...field} data-testid="input-action" />
+                                        </FormControl>
+                                        <FormDescription>
+                                            The page to be returned if the rule is satisfied.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="prompt"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel data-testid="return-page-label">Prompt</FormLabel>
+                                        <FormControl>
+                                            <Textarea {...field} data-testid="textarea-prompt" />
+                                        </FormControl>
+                                        <FormDescription>
+                                            The prompt to be returned if the rule is satisfied.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="priority"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel data-testid="priority-label">Priority</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" {...field} data-testid="priority-input" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit">Update Rule</Button>
+                        </form>
+                    </Form>
+                );
+            case "unavailable":
+                return <div>No rule found with specified ID</div>;
+            case "loading":
+                return <div>Loading...</div>;
+            default:
+                return <div>Unknown status</div>;
+        }
+    };
+
+    return (
+        <>
+            {renderContent()}
+        </>
     );
 }

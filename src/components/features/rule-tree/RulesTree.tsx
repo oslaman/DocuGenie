@@ -21,6 +21,7 @@ import { RuleItems, columns } from "@/components/features/rule-table/columns"
 import { Rules } from '@/utils/interfaces';
 import dagre from '@dagrejs/dagre';
 import { Button } from '@/components/ui/button';
+import { toast } from "sonner";
 
 import { getDB } from '@/utils/db/db-helper';
 import { removeRuleNode } from '@/utils/db/db-rules';
@@ -73,6 +74,7 @@ const RulesTree: React.FC = () => {
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const ref = useRef(null);
     const db = useRef<any>(null);
+    const treeOptions =  { hideAttribution: true };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -86,7 +88,7 @@ const RulesTree: React.FC = () => {
             rules.forEach((rule) => {
                 newNodes.push({
                     id: `${rule.id}`,
-                    type: rule.parent === '' ? 'input' : rule.rule.children.length > 0 ? null : 'output',
+                    type: rule.parent === '' || !rule.parent ? 'input' : rule.rule.children.length > 0 ? null : 'output',
                     data: {
                         label: rule.rule.name,
                         rule: rule
@@ -126,7 +128,8 @@ const RulesTree: React.FC = () => {
             salience: rule.rule.salience,
             children: rule.rule.children.length,
             parent: rule.parent,
-            page: rule.rule.actionValue,
+            prompt: rule.rule.prompt,
+            page: rule.rule.page,
         }));
         return rulesData;
     }
@@ -176,6 +179,10 @@ const RulesTree: React.FC = () => {
                     removeRuleNode(db.current, deleted[0].data.rule.id, deleted[0].data.rule.parent.toString());
                     setTableData((tableData) => tableData.filter((t) => t.id !== deleted[0].id));
 
+                    toast(`Rule ${deleted[0].data.rule.id} deleted`, {
+                        description: new Date().toLocaleString(),
+                    })
+
                     // remove node from rules
                     // this should remove the node from the rules array, but messes up the tree layout
                     // const updatedRules = rules.filter((rule: Rules) => rule.id !== deleted[0].id);
@@ -211,6 +218,7 @@ const RulesTree: React.FC = () => {
                     onConnect={onConnect}
                     fitView
                     attributionPosition="top-right"
+                    proOptions={treeOptions}
                 >
                     <Panel position="top-right">
                         <div className="flex gap-2 ">

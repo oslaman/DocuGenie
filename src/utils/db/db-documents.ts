@@ -101,9 +101,10 @@ export const search = async (
         .sort((a: any, b: any) => (a.distance || 0) - (b.distance || 0) + (b.rank || 0) - (a.rank || 0))
         .slice(0, limit);
 
-    const formattedChunks = combinedResults.map((result: any) => `- ${result.content}`);
-
-    return formattedChunks;
+    return combinedResults.map((result: any) => ({
+        content: `- ${result.content}`,
+        page_id: result.page_id,
+    }));
 };
 
 /**
@@ -142,9 +143,10 @@ export const searchWithPage = async (
     .sort((a: any, b: any) => (a.distance || 0) - (b.distance || 0) + (b.rank || 0) - (a.rank || 0))
     .slice(0, limit);
 
-    const formattedChunks = combinedResults.map((result: any) => `- ${result.content}`);
-
-    return formattedChunks;
+    return combinedResults.map((result: any) => ({
+        content: `- ${result.content}`,
+        page_id: result.page_id,
+    }));
 }
 
 /**

@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
+import { toast } from "sonner";
 import { useRulesContext } from "@/context/context";
 import { Rules } from "@/utils/interfaces";
 
@@ -138,6 +138,9 @@ export const columns: ColumnDef<RuleItems>[] = [
                 await removeRuleNode(db, rule.id, rule.parent);
                 const updatedRules = rules.filter((ruleItem: Rules) => ruleItem.id !== rule.id);
                 setRules(updatedRules);
+                toast("Rule deleted", {
+                  description: new Date().toLocaleString(),
+              })
               }}
 
               className="text-red-500"

@@ -16,11 +16,12 @@ export async function insertRootRuleNode(pg: PGliteWorker, ruleNode: RuleNode) {
     await pg.query('BEGIN');
     try {
         const res = await pg.query(
-        `INSERT INTO rules (name, conditions, action, salience) VALUES ($1, $2, $3, $4) RETURNING id`,
+        `INSERT INTO rules (name, conditions, prompt, page, salience) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
         [
             jsonRule.name,
             conditions,
-            jsonRule.action,
+            jsonRule.prompt,
+            jsonRule.page,
             jsonRule.salience
         ]
     );
@@ -54,11 +55,12 @@ export async function insertChildRuleNode(pg: PGliteWorker, ruleNode: RuleNode, 
     await pg.query('BEGIN');
     try {
         await pg.query(
-            `INSERT INTO rules (name, conditions, action, salience, parent_id) VALUES ($1, $2, $3, $4, $5)`,
+            `INSERT INTO rules (name, conditions, prompt, page, salience, parent_id) VALUES ($1, $2, $3, $4, $5, $6)`,
             [
                 jsonRule.name,
                 conditions,
-                jsonRule.action,
+                jsonRule.prompt,
+                jsonRule.page,
                 jsonRule.salience,
                 parentId
             ]
@@ -83,11 +85,11 @@ export async function insertChildRuleNode(pg: PGliteWorker, ruleNode: RuleNode, 
 export async function getAllRuleNodes(pg: PGliteWorker) {
     const query = `
         WITH RECURSIVE rule_tree AS (
-            SELECT id, name, conditions, action, salience, parent_id
+            SELECT id, name, conditions, prompt, page, salience, parent_id
             FROM rules
             WHERE parent_id IS NULL
             UNION ALL
-            SELECT r.id, r.name, r.conditions, r.action, r.salience, r.parent_id
+            SELECT r.id, r.name, r.conditions, r.prompt, r.page, r.salience, r.parent_id
             FROM rules r
             INNER JOIN rule_tree rt ON r.parent_id = rt.id
         )
@@ -102,7 +104,8 @@ export async function getAllRuleNodes(pg: PGliteWorker) {
         const ruleNode = new RuleNode(
             row.name,
             JSON.parse(row.conditions),
-            row.action,
+            row.prompt,
+            row.page,
             row.salience
         );
         ruleNode.parentId = row.parent_id;
@@ -137,11 +140,11 @@ export async function getAllRuleNodes(pg: PGliteWorker) {
 export async function getRootRules(pg: PGliteWorker) {
     const query = `
         WITH RECURSIVE rule_tree AS (
-            SELECT id, name, conditions, action, salience, parent_id
+            SELECT id, name, conditions, prompt, page, salience, parent_id
             FROM rules
             WHERE parent_id IS NULL
             UNION ALL
-            SELECT r.id, r.name, r.conditions, r.action, r.salience, r.parent_id
+            SELECT r.id, r.name, r.conditions, r.prompt, r.page, r.salience, r.parent_id
             FROM rules r
             INNER JOIN rule_tree rt ON r.parent_id = rt.id
         )
@@ -154,7 +157,8 @@ export async function getRootRules(pg: PGliteWorker) {
         nodes[row.id] = new RuleNode(
             row.name,
             JSON.parse(row.conditions),
-            row.action,
+            row.prompt,
+            row.page,
             row.salience
         );
         nodes[row.id].parentId = row.parent_id;
@@ -211,15 +215,15 @@ export async function updateRuleNode(pg: PGliteWorker, nodeId: string, updatedFi
     await pg.query('BEGIN');
     try {
         const conditions = JSON.stringify(updatedFields.conditions);
-        let template = `UPDATE rules SET name = $1, conditions = $2, action = $3, salience = $4`;
+        let template = `UPDATE rules SET name = $1, conditions = $2, prompt = $3, page = $4, salience = $5`;
 
         if (parentId) {
-            template += `, parent_id = $5`;
-            template += ` WHERE id = $6`;
-            await pg.query(template, [updatedFields.name, conditions, updatedFields.actionValue, updatedFields.salience, parentId, nodeId]);
+            template += `, parent_id = $6`;
+            template += ` WHERE id = $7`;
+            await pg.query(template, [updatedFields.name, conditions, updatedFields.prompt, updatedFields.page, updatedFields.salience, parentId, nodeId]);
         } else {
-            template += ` WHERE id = $5`;
-            await pg.query(template, [updatedFields.name, conditions, updatedFields.actionValue, updatedFields.salience, nodeId]);
+            template += ` WHERE id = $6`;
+            await pg.query(template, [updatedFields.name, conditions, updatedFields.prompt, updatedFields.page, updatedFields.salience, nodeId]);
         }
 
         await pg.query('COMMIT');
@@ -241,11 +245,11 @@ export async function updateRuleNode(pg: PGliteWorker, nodeId: string, updatedFi
 export async function getRuleById(pg: PGliteWorker, id: string) {
     const query = `
         WITH RECURSIVE rule_tree AS (
-            SELECT id, name, conditions, action, salience, parent_id
+            SELECT id, name, conditions, prompt, page, salience, parent_id
             FROM rules
             WHERE id = $1
             UNION ALL
-            SELECT r.id, r.name, r.conditions, r.action, r.salience, r.parent_id
+            SELECT r.id, r.name, r.conditions, r.prompt, r.page, r.salience, r.parent_id
             FROM rules r
             INNER JOIN rule_tree rt ON r.parent_id = rt.id
         )
@@ -255,7 +259,7 @@ export async function getRuleById(pg: PGliteWorker, id: string) {
 
     const nodes: { [key: number]: RuleNode } = {};
     res.rows.forEach((row: any) => {
-        nodes[row.id] = new RuleNode(row.name, JSON.parse(row.conditions), row.action, row.salience);
+        nodes[row.id] = new RuleNode(row.name, JSON.parse(row.conditions), row.prompt, row.page, row.salience);
         nodes[row.id].parentId = row.parent_id;
     });
 
