@@ -7,7 +7,7 @@ import { CreateMLCEngine, InitProgressCallback } from '@mlc-ai/web-llm';
 
 
 /**
- * Singleton class for the pipeline.
+ * Singleton class for the embedding pipeline.
  * @class
  * @property {string} task - The task to use for the pipeline.
  * @property {string} model - The model to use for the pipeline.
@@ -31,7 +31,7 @@ class PipelineSingleton {
 }
 
 /**
- * Singleton class for the text generation.
+ * Singleton class for the text generation pipeline.
  * @class
  * @property {string} model - The model to use for the text generation.
  * @property {any} instance - The instance of the text generation.
