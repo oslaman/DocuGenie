@@ -1,7 +1,7 @@
 /**
  * Calculates the time since a given date.
- * @param date - The date to calculate the time since.
- * @returns A string representing the time since the date.
+ * @param {Date} date - The date to calculate the time since.
+ * @returns {string} A string representing the time since the date.
  */
 export function timeSince(date: Date) {
 
@@ -33,9 +33,9 @@ export function timeSince(date: Date) {
 
 /**
  * Formats a number of bytes into a human-readable string.
- * @param bytes - The number of bytes to format.
- * @param decimals - The number of decimal places to include (default is 2).
- * @returns A string representing the formatted number of bytes.
+ * @param {number} bytes - The number of bytes to format.
+ * @param {number} decimals - The number of decimal places to include (default is 2).
+ * @returns {string} A string representing the formatted number of bytes.
  */
 export function formatBytes(bytes: number, decimals = 2) {
     if (!+bytes) return '0 Bytes'

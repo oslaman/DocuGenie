@@ -17,15 +17,24 @@ import { clearTable, clearDb } from '@/utils/db/db-helper'
 
 type TableName = 'chunks' | 'rules' | ''
 
+/**
+ * Renders the general settings page.
+ * @category Component
+ */
 export default function GeneralSettingsPage() {
+    /** The selected table for deletion. */
     const [selectedTable, setSelectedTable] = useState<TableName>('chunks')
+    /** The size of the database. */
     const [dbSize, setDbSize] = useState<string>('0 B')
+    /** The counts of the tables. */
     const [tableCounts, setTableCounts] = useState({
         chunks: 0,
         rules: 0,
     })
+    /** The database instance. */
     const db = useRef<any>(null);
 
+    /** Fetches the data from the database. */
     const fetchData = async () => {
 
         if (!db.current) {
@@ -40,6 +49,7 @@ export default function GeneralSettingsPage() {
         })
     }
 
+    /** Fetches the size of the database. */    
     const fetchDbSize = async () => {
         if (!db.current) {
             db.current = await getDB()
@@ -49,6 +59,7 @@ export default function GeneralSettingsPage() {
         setDbSize(formatBytes(dbSize))
     }
 
+    /** Initializes the database instance. */
     useEffect(() => {
         const fetchDb = async () => {
             db.current = await getDB()
@@ -56,14 +67,17 @@ export default function GeneralSettingsPage() {
         fetchDb()
     }, [])
 
+    /** Fetches the data from the database. */
     useEffect(() => {
         fetchData()
     }, [tableCounts])
 
+    /** Fetches the size of the database. */
     useEffect(() => {
         fetchDbSize()
     }, [dbSize])
 
+    /** Deletes a table from the database. */
     const deleteTable = async () => {
         if (!db.current) {
             db.current = await getDB()
@@ -82,6 +96,7 @@ export default function GeneralSettingsPage() {
         }
     }
 
+    /** Deletes all tables from the database. */
     const removeAllTables = async () => {
         if (!db.current) {
             db.current = await getDB()
@@ -97,12 +112,14 @@ export default function GeneralSettingsPage() {
         }
     }
 
+    /** Deletes the entire database. */
     const deleteDatabase = () => {
         if (confirm('Are you absolutely sure you want to delete the entire database? This action is irreversible!')) {
 
         }
     }
 
+    /** Refreshes the data from the database. */
     const refreshData = () => {
         fetchData()
         fetchDbSize()

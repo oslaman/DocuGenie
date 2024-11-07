@@ -10,6 +10,10 @@ import {
 } from "@/components/ui/breadcrumb"
 
 
+/**
+ * Renders the page for managing documents.
+ * @category Component
+ */
 export default function DocumentsPage() {
     return (
         <div className="space-y-6">

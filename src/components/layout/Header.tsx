@@ -11,6 +11,10 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { Outlet, Link } from "react-router-dom";
 
 
+/**
+ * Renders the header of the application.
+ * @category Component
+ */
 const Header = () => {
     return (
         <header>

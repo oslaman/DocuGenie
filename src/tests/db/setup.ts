@@ -22,20 +22,17 @@ vi.mock("@/utils/db/db-helper", async (importOriginal) => {
     };
 });
 
-// initialize db before each test
 beforeEach(async () => {
     const db = await getDB();
     await initSchema(db);
 });
 
-// clean up db after each test
 afterEach(async () => {
     const db = await getDB();
     await db.exec('DROP TABLE IF EXISTS embeddings');
     await db.exec('DROP TABLE IF EXISTS rules');
 });
 
-// free up resources after all tests are done
 afterAll(async () => {
     const db = await getDB();
     await db.close();

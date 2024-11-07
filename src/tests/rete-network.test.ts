@@ -5,19 +5,20 @@ describe('RuleNode', () => {
     let ruleNode: RuleNode;
 
     beforeEach(() => {
-        ruleNode = new RuleNode('TestRule', [{ "==": [{ "var": "key" }, "value"] }], 10, 5);
+        ruleNode = new RuleNode('TestRule', [{ "==": [{ "var": "key" }, "value"] }], 'test prompt', 10, 5);
     });
 
     it('should create a RuleNode with correct properties', () => {
         expect(ruleNode.name).toBe('TestRule');
         expect(ruleNode.conditions).toEqual([{ "==": [{ "var": "key" }, "value"] }]);
-        expect(ruleNode.actionValue).toBe(10);
+        expect(ruleNode.prompt).toBe('test prompt');
+        expect(ruleNode.page).toBe(10);
         expect(ruleNode.salience).toBe(5);
         expect(ruleNode.children).toEqual([]);
     });
 
     it('should add a child RuleNode', () => {
-        const childNode = new RuleNode('ChildRule', [], 5);
+        const childNode = new RuleNode('ChildRule', [], 'test prompt', 5, 5);
         ruleNode.addChild(childNode);
         expect(ruleNode.children).toContain(childNode);
     });
@@ -39,7 +40,8 @@ describe('RuleNode', () => {
         const deserializedNode = RuleNode.fromJSON(json);
         expect(deserializedNode.name).toBe(ruleNode.name);
         expect(deserializedNode.conditions).toEqual(ruleNode.conditions);
-        expect(deserializedNode.actionValue).toBe(ruleNode.actionValue);
+        expect(deserializedNode.prompt).toBe(ruleNode.prompt);
+        expect(deserializedNode.page).toBe(ruleNode.page);
         expect(deserializedNode.salience).toBe(ruleNode.salience);
     });
 });
@@ -50,7 +52,7 @@ describe('RulesEngine', () => {
 
     beforeEach(() => {
         rulesEngine = new RulesEngine();
-        ruleNode = new RuleNode('TestRule', [{ "==": [{ "var": "key" }, "value"] }], 10, 5);
+        ruleNode = new RuleNode('TestRule', [{ "==": [{ "var": "key" }, "value"] }], 'test prompt', 10, 5);
     });
 
     it('should add a root rule', () => {
@@ -62,7 +64,7 @@ describe('RulesEngine', () => {
         rulesEngine.addRootRule(ruleNode);
         const facts = { key: 'value' };
         const actionValue = rulesEngine.evaluate(facts);
-        expect(actionValue).toBe(10);
+        expect(actionValue).toEqual({page: 10, prompt: 'test prompt'});
     });
 
     it('should return undefined if no rules are satisfied', () => {
@@ -73,8 +75,8 @@ describe('RulesEngine', () => {
     });
 
     it('should prioritize rules based on salience and timestamp', () => {
-        const highSalienceRule = new RuleNode('HighSalienceRule', [{ "==": [{ "var": "key" }, "value"] }], 20, 10);
-        const recentRule = new RuleNode('RecentRule', [{ "==": [{ "var": "key" }, "value"] }], 15, 5);
+        const highSalienceRule = new RuleNode('HighSalienceRule', [{ "==": [{ "var": "key" }, "value"] }], 'test prompt', 20, 10);
+        const recentRule = new RuleNode('RecentRule', [{ "==": [{ "var": "key" }, "value"] }], 'test prompt', 15, 5);
 
         rulesEngine.addRootRule(ruleNode);
         rulesEngine.addRootRule(highSalienceRule);
@@ -82,6 +84,6 @@ describe('RulesEngine', () => {
 
         const facts = { key: 'value' };
         const actionValue = rulesEngine.evaluate(facts);
-        expect(actionValue).toBe(20); // The rule with the highest salience (priority) should be selected
+        expect(actionValue).toEqual({page: 20, prompt: 'test prompt'});
     });
 });

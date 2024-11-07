@@ -20,6 +20,9 @@ import { getTotalPages } from "@/utils/db/db-documents";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
+/**
+ * Schema for the rule form.
+ */
 export const formSchema = z.object({
     description: z.string().min(2),
     rule_option: z.array(z.object({
@@ -33,28 +36,51 @@ export const formSchema = z.object({
     prompt: z.string().min(2),
 });
 
+/**
+ * Renders a form for editing a rule.
+ * @category Component
+ */
 export function EditRuleForm() {
+    /** The rule ID from the URL. */
     const { ruleId } = useParams();
-    const [rule, setRule] = useState<any>(null);
-    const [rules, setRules] = useState<Rules[]>([]);
-    const [ruleConditions, setRuleConditions] = useState<{ type: string, value: string, open: boolean }[]>([]);
-    const db = useRef<any>(null);
-    const [open, setOpen] = useState(false);
-    const [value, setValue] = useState<string>();
-    const [conditionOpen, setConditionOpen] = useState(false);
-    const [condition, setCondition] = useState('');
-    const [isDirty, setIsDirty] = useState(false);
-    const [maxPage, setMaxPage] = useState(0)
 
+    /** The rule to be edited. */
+    const [rule, setRule] = useState<any>(null);
+    /** The rules to be displayed in the dropdown. */
+    const [rules, setRules] = useState<Rules[]>([]);
+    /** The conditions of the rule. */
+    const [ruleConditions, setRuleConditions] = useState<{ type: string, value: string, open: boolean }[]>([]);
+    /** The database instance. */
+    const db = useRef<any>(null);
+    /** Whether the popover is open. */
+    const [open, setOpen] = useState(false);
+    /** The value of the selected rule. */
+    const [value, setValue] = useState<string>();
+    /** Whether the condition popover is open. */
+    const [conditionOpen, setConditionOpen] = useState(false);
+    /** The condition to be edited. */
+    const [condition, setCondition] = useState('');
+    /** Whether the form is dirty. */
+    const [isDirty, setIsDirty] = useState(false);
+    /** The maximum page number. */
+    const [maxPage, setMaxPage] = useState(0)
+    /** The status of the rule. */
     const [status, setStatus] = useState<Status>("loading");
 
+    /** The logic engine instance. */
     const logicEngine = new LogicEngine();
     logicEngine.addMethod("find", ([str, keyword]: [string, string]) => new RegExp(`\\b${keyword}\\b`, 'i').test(str));
 
+    /**
+     * Adds a rule to the rule conditions.
+     */
     const addRule = useCallback(() => {
         setRuleConditions((prevConditions) => [...prevConditions, { type: '', value: '', open: false }]);
     }, []);
 
+    /**
+     * Updates a rule condition.
+     */
     const updateRule = useCallback((index: number, field: 'type' | 'value', value: string, open: boolean) => {
         setRuleConditions((prevConditions) => {
             const updatedRules = [...prevConditions];
@@ -64,10 +90,16 @@ export function EditRuleForm() {
         });
     }, []);
 
+    /**
+     * Removes a rule condition.
+     */
     const removeRule = useCallback((index: number) => {
         setRuleConditions((prevConditions) => prevConditions.filter((_, i) => i !== index));
     }, []);
 
+    /**
+     * Sets the allowed conditions for the rule.
+     */
     const allowedConditions = useMemo(() => {
         if (typeof logicEngine.methods === 'object' && logicEngine.methods !== null) {
             return Object.keys(logicEngine.methods);
@@ -77,6 +109,9 @@ export function EditRuleForm() {
         }
     }, [logicEngine.methods]);
 
+    /**
+     * Creates the form instance with the default values.
+     */
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -89,6 +124,9 @@ export function EditRuleForm() {
         },
     });
 
+    /**
+     * Initializes the database instance.
+     */
     useEffect(() => {
         const initDB = async () => {
             if (!db.current) {
@@ -98,6 +136,9 @@ export function EditRuleForm() {
         initDB();
     }, []);
 
+    /**
+     * Adds a beforeunload listener to the window.
+     */
     useEffect(() => {
         if (isDirty) {
             window.addEventListener('beforeunload', beforeUnloadListener);
@@ -108,12 +149,18 @@ export function EditRuleForm() {
         }
     }, [isDirty]);
 
+    /**
+     * The beforeunload listener.
+     */
     const beforeUnloadListener = useCallback((event: BeforeUnloadEvent) => {
         event.preventDefault();
         event.returnValue = "Are you sure you want to exit?";
         return event.returnValue;
     }, []);
 
+    /**
+     * Fetches the rule from the database.
+     */
     useEffect(() => {
         const fetchRule = async () => {
             setStatus("loading");
@@ -163,6 +210,9 @@ export function EditRuleForm() {
         fetchRule();
     }, [ruleId, form]);
 
+    /**
+     * Handles the form submission.
+     */
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
             const conditions = ruleConditions.map((ruleCondition) => ({
@@ -180,6 +230,9 @@ export function EditRuleForm() {
         }
     };
 
+    /**
+     * Renders the content based on the status.
+     */
     const renderContent = () => {
         switch (status) {
             case "available":
@@ -373,7 +426,7 @@ export function EditRuleForm() {
                                     <FormItem>
                                         <FormLabel data-testid="return-page-label">Page</FormLabel>
                                         <FormControl>
-                                            <Input type="number" {...field} data-testid="input-action" />
+                                            <Input type="number" {...field} data-testid="return-page-input" />
                                         </FormControl>
                                         <FormDescription>
                                             The page to be returned if the rule is satisfied.

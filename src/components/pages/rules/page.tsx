@@ -11,10 +11,15 @@ import {
 
 import { EditRuleForm } from "@/components/features/rule-form/EditRuleForm";
 
+/** The props type of {@link RulesPage | `RulesPage`}. */
 interface RulesPageProps {
     id?: string;
 }
 
+/**
+ * Renders the page for managing rules (all rules or a single rule).
+ * @category Component
+ */
 export default function RulesPage({ id }: RulesPageProps) {
     return (
         <div className="space-y-6">

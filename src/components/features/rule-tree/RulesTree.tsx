@@ -33,7 +33,9 @@ const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 const nodeWidth = 172;
 const nodeHeight = 36;
 
-
+/**
+ * Fetches the layouted elements for the rules tree for {@link RulesTree | `RulesTree`}.
+ */
 const getLayoutedElements = (nodes: any[], edges: any[], direction = 'TB') => {
     const isHorizontal = direction === 'LR';
     dagreGraph.setGraph({ rankdir: direction });
@@ -66,6 +68,10 @@ const getLayoutedElements = (nodes: any[], edges: any[], direction = 'TB') => {
     return { nodes: newNodes, edges };
 };
 
+/**
+ * Renders the rules tree.
+ * @category Component
+ */
 const RulesTree: React.FC = () => {
     const { rules, setRules } = useRulesContext();
     const [tableData, setTableData] = useState<RuleItems[]>([]);

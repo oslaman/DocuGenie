@@ -5,6 +5,7 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
+/** The props type of {@link SidebarNav | `SidebarNav`}. */
 interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
   items: {
     href: string;
@@ -12,6 +13,10 @@ interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
   }[];
 }
 
+/**
+ * Renders a sidebar navigation.
+ * @category Component
+ */
 export function SidebarNav({ className, items, ...props }: SidebarNavProps) {
   const location = useLocation();
 
