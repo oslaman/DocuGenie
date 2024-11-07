@@ -25,6 +25,11 @@ export type RuleItems = {
   children: number
 }
 
+/**
+ * Renders the columns for the rule table.
+ * @category Data
+ * @category Component
+ */
 export const columns: ColumnDef<RuleItems>[] = [
     {
         id: "select",

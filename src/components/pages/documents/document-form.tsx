@@ -7,12 +7,16 @@ import { Rules, WorkerMessageEvent } from '@/utils/interfaces';
 
 import { getDB, initSchema, countRows, getDbData } from '@/utils/db/db-helper';
 import { seedDb, seedSingleDb } from '@/utils/db/db-documents';
-import ChatWorker from '@/workers/worker.js?worker';
+import ChatWorker from '@/workers/worker.ts?worker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Info } from "lucide-react"
 
 import '@/App.css';
 
+/**
+ * The document form component for inserting documents into the database.
+ * @category Component
+ */
 export default function DocumentForm() {
     const [progress, setProgress] = React.useState(0);
 

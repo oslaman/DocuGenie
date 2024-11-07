@@ -4,15 +4,13 @@ import { initSchema } from "@/utils/db/db-helper";
 
 /**
  * Inserts a root rule node into the database.
- * @param pg - The PGliteWorker instance.
- * @param ruleNode - The RuleNode to insert.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @param {RuleNode} ruleNode - The RuleNode to insert.
+ * @throws {Error} If there is an error inserting the root rule node.
  */
 export async function insertRootRuleNode(pg: PGliteWorker, ruleNode: RuleNode) {
     const jsonRule = JSON.parse(ruleNode.toJSON());
     const conditions = JSON.stringify(jsonRule.conditions);
-    console.log("JSON Rule: ", jsonRule);
-    console.log("Conditions: ", conditions);
-    console.log('Inserting rule:', jsonRule);
 
     await pg.query('BEGIN');
     try {
@@ -42,9 +40,10 @@ export async function insertRootRuleNode(pg: PGliteWorker, ruleNode: RuleNode) {
 
 /**
  * Inserts a child rule node into the database.
- * @param pg - The PGliteWorker instance.
- * @param ruleNode - The RuleNode to insert.
- * @param parentId - The ID of the parent rule node.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @param {RuleNode} ruleNode - The RuleNode to insert.
+ * @param {string} parentId - The ID of the parent rule node.
+ * @throws {Error} If there is an error inserting the child rule node.
  */
 export async function insertChildRuleNode(pg: PGliteWorker, ruleNode: RuleNode, parentId: string) {
     const jsonRule = JSON.parse(ruleNode.toJSON());
@@ -80,8 +79,8 @@ export async function insertChildRuleNode(pg: PGliteWorker, ruleNode: RuleNode, 
 
 /**
  * Retrieves all rule nodes from the database.
- * @param pg - The PGliteWorker instance.
- * @returns An array of RuleNode objects.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @returns {Promise<{ id: string, rule: RuleNode, parent: string | null }[]>} An array of RuleNode objects.
  */
 export async function getAllRuleNodes(pg: PGliteWorker) {
     const query = `
@@ -135,8 +134,8 @@ export async function getAllRuleNodes(pg: PGliteWorker) {
 
 /**
  * Retrieves all root rules from the database.
- * @param pg - The PGliteWorker instance.
- * @returns An array of RuleNode objects.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @returns {Promise<{ id: string, rule: RuleNode, parent: string | null }[]>} An array of RuleNode objects.
  */
 export async function getRootRules(pg: PGliteWorker) {
     const query = `
@@ -177,9 +176,10 @@ export async function getRootRules(pg: PGliteWorker) {
 
 /**
  * Removes a rule node from the database.
- * @param pg - The PGliteWorker instance.
- * @param nodeId - The ID of the rule node to remove.
- * @param parentId - The ID of the parent rule node.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @param {string} nodeId - The ID of the rule node to remove.
+ * @param {string} parentId - The ID of the parent rule node.
+ * @throws {Error} If there is an error removing the rule node.
  */
 export async function removeRuleNode(pg: PGliteWorker, nodeId: string, parentId: string) {
     await pg.query('BEGIN');
@@ -207,10 +207,11 @@ export async function removeRuleNode(pg: PGliteWorker, nodeId: string, parentId:
 
 /**
  * Updates a rule node in the database.
- * @param pg - The PGliteWorker instance.
- * @param nodeId - The ID of the rule node to update.
- * @param updatedFields - The updated fields for the rule node.
- * @param parentId - The ID of the parent rule node.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @param {string} nodeId - The ID of the rule node to update.
+ * @param {RuleNode} updatedFields - The updated fields for the rule node.
+ * @param {string} parentId - The ID of the parent rule node.
+ * @throws {Error} If there is an error updating the rule node.
  */
 export async function updateRuleNode(pg: PGliteWorker, nodeId: string, updatedFields: RuleNode, parentId: string) {
     await pg.query('BEGIN');
@@ -239,9 +240,9 @@ export async function updateRuleNode(pg: PGliteWorker, nodeId: string, updatedFi
 
 /**
  * Retrieves a rule node by its ID from the database.
- * @param pg - The PGliteWorker instance.
- * @param id - The ID of the rule node to retrieve.
- * @returns An array of RuleNode objects.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @param {string} id - The ID of the rule node to retrieve.
+ * @returns {Promise<{ id: string, rule: RuleNode, parent: string | null }[]>} An array of RuleNode objects.
  */
 export async function getRuleById(pg: PGliteWorker, id: string) {
     const query = `
@@ -286,8 +287,9 @@ export async function getRuleById(pg: PGliteWorker, id: string) {
 
 /**
  * Removes the parent of a rule node from the database.
- * @param pg - The PGliteWorker instance.
- * @param nodeId - The ID of the rule node to remove the parent from.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @throws {Error} If there is an error removing the parent.
+ * @param {string} nodeId - The ID of the rule node to remove the parent from.
  */
 export async function removeParent(pg: PGliteWorker, nodeId: string) {
     await pg.query('BEGIN');
@@ -305,8 +307,8 @@ export async function removeParent(pg: PGliteWorker, nodeId: string) {
 
 /**
  * Retrieves the total number of rules in the database.
- * @param pg - The PGliteWorker instance.
- * @returns The total number of rules.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @returns {Promise<number>} The total number of rules.
  */
 export const getTotalRules = async (pg: PGliteWorker) => {
     const totalRules: any = await pg.query(`SELECT COUNT(*) FROM rules`);

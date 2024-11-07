@@ -9,6 +9,10 @@ import { getDB } from '@/utils/db/db-helper';
 import { getAllRuleNodes } from '@/utils/db/db-rules';
 import { useTransition } from "react";
 
+/**
+ * Renders the form and trees for managing rules.
+ * @category Component
+ */
 export default function RulesForm() {
     const [rules, setRulesItems] = useState<Rules[]>([]);
     const [isPending, startTransition] = useTransition();

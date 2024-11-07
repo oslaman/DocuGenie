@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 import '@/App.css';
 
-import ChatWorker from '@/workers/worker.js?worker';
+import ChatWorker from '@/workers/worker.ts?worker';
 
 type Message = {
   role: 'user' | 'assistant'
@@ -26,6 +26,10 @@ type PromptHistory = {
   timestamp: Date;
 }
 
+/**
+ * Renders the home page.
+ * @category Component
+ */
 const Home: React.FC = () => {
   const [userInput, setUserInput] = useState<string>('');
   const [documentContext, setDocumentContext] = useState<string>('');

@@ -26,6 +26,13 @@
         "noEmit": true,
         "jsx": "react-jsx"
     },
+    "typedocOptions": {
+        "entryPoints": [
+            "src/**/*.ts",
+            "src/**/*.tsx"
+        ],
+        "out": "docs/typedoc"
+    },
     "include": [
         "src"
     ],

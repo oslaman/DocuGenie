@@ -1,10 +1,10 @@
 import { PGliteWorker } from "@electric-sql/pglite/worker";
 
 /**
- * Seeds the database with chunks.
- * @param pg - The PGliteWorker instance.
- * @param chunks - The chunks to seed the database with.
- * @param batchSize - The size of each batch to insert (default is 500).
+ * Seeds the database with the chunked content of a document.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @param {any[]} chunks - The chunks to seed the database with.
+ * @param {number} batchSize - The size of each batch to insert (default is 500).
  */
 export const seedDb = async (pg: PGliteWorker, chunks: any[], batchSize = 500) => {
     console.log("Seeding DB: ", chunks);
@@ -33,9 +33,9 @@ export const seedDb = async (pg: PGliteWorker, chunks: any[], batchSize = 500) =
 
 /**
  * Seeds the database with a single embedding.
- * @param pg - The PGliteWorker instance.
- * @param chunks - The embedding to seed the database with.
- * @param batchSize - The size of each batch to insert (default is 500).
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @param {any[]} chunks - The embedding to seed the database with.
+ * @param {number} batchSize - The size of each batch to insert (default is 500).
  */
 export const seedSingleDb = async (pg: PGliteWorker, chunks: any[], batchSize = 500) => {
     console.log("Seeding DB: ", chunks);
@@ -62,11 +62,11 @@ export const seedSingleDb = async (pg: PGliteWorker, chunks: any[], batchSize = 
 
 /**
  * Searches the database for chunks matching a query.
- * @param pg - The PGliteWorker instance.
- * @param embedding - The embedding to search for.
- * @param query - The query to search for.
- * @param match_threshold - The threshold for matching (default is 0.8).
- * @param limit - The maximum number of results to return (default is 3).
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @param {any[]} embedding - The embedding to search for.
+ * @param {string} query - The query to search for.
+ * @param {number} match_threshold - The threshold for matching (default is 0.8).
+ * @param {number} limit - The maximum number of results to return (default is 3).
  */
 export const search = async (
     pg: PGliteWorker,
@@ -109,10 +109,10 @@ export const search = async (
 
 /**
  * Searches the database for chunks matching a query and page number.
- * @param pg - The PGliteWorker instance.
- * @param query - The query to search for.
- * @param page - The page number to search for.
- * @param limit - The maximum number of results to return (default is 3).
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @param {string} query - The query to search for.
+ * @param {number} page - The page number to search for.
+ * @param {number} limit - The maximum number of results to return (default is 3).
  */
 export const searchWithPage = async (
     pg: PGliteWorker,
@@ -151,8 +151,8 @@ export const searchWithPage = async (
 
 /**
  * Retrieves the total number of pages in the database.
- * @param pg - The PGliteWorker instance.
- * @returns The total number of pages.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @returns {Promise<number>} The total number of pages.
  */
 export const getTotalPages = async (pg: PGliteWorker) => {
     const totalPages: any = await pg.query(`SELECT MAX(page_id) FROM chunks`);
@@ -161,8 +161,8 @@ export const getTotalPages = async (pg: PGliteWorker) => {
 
 /**
  * Retrieves the total number of chunks in the database.
- * @param pg - The PGliteWorker instance.
- * @returns The total number of chunks.
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @returns {Promise<number>} The total number of chunks.
  */
 export const getTotalChunks = async (pg: PGliteWorker) => {
     const totalChunks: any = await pg.query(`SELECT COUNT(*) FROM chunks`);

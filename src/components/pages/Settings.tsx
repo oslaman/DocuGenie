@@ -13,6 +13,10 @@ import { useParams } from 'react-router-dom';
 
 import '@/App.css';
 
+/**
+ * Renders the settings page.
+ * @category Component
+ */
 const Settings = () => {
     const location = useLocation();
     const { ruleId } = useParams();

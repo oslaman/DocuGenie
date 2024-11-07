@@ -3,9 +3,6 @@ import { describe, it, expect, vi } from 'vitest';
 import Home from '@/components/pages/Home';
 import { getByTestId } from '@testing-library/dom';
 
-
-
-// Mocking the worker and other dependencies
 vi.mock('@/workers/worker.js?worker', () => {
   return {
     default: class {

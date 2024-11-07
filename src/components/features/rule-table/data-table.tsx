@@ -26,11 +26,16 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+/** The props type of {@link DataTable | `DataTable`}. */
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
 }
 
+/**
+ * Renders a data table for the rules.
+ * @category Component
+ */
 export function DataTable<TData, TValue>({
   columns,
   data,

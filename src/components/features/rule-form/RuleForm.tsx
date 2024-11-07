@@ -41,24 +41,33 @@ const formSchema = z.object({
     prompt: z.string(),
 });
 
-interface RuleFormProps {
-    currentRule: Rules;
-    id?: string;
-}
-
+/**
+ * Renders a form for creating a new rule.
+ * @category Component
+ */
 export function RuleForm() {
+    /** Whether the popover is open. */
     const [open, setOpen] = useState(false)
+    /** The value of the selected rule. */
     const [value, setValue] = useState("")
+    /** Whether the condition popover is open. */
     const [conditionOpen, setConditionOpen] = useState(false)
+    /** The condition to be edited. */
     const [condition, setCondition] = useState("")
+    /** The rules to be displayed in the dropdown. */
     const { rules, setRules } = useRulesContext();
+    /** The conditions of the rule. */
     const [ruleConditions, setRuleConditions] = useState<{ type: string, value: string, open: boolean }[]>([]);
+    /** The maximum page number allowed (The total number of pages in the database). */
     const [maxPage, setMaxPage] = useState(0);
+    /** The database instance. */
     const db = useRef<any>(null);
 
+    /** The logic engine instance. */
     const logicEngine = new LogicEngine();
     logicEngine.addMethod("find", ([str, keyword]: [string, string]) => new RegExp(`\\b${keyword}\\b`, 'i').test(str));
 
+    /** Sets the allowed conditions for the rule. */
     let allowedConditions: string[] = [];
     if (typeof logicEngine.methods === 'object' && logicEngine.methods !== null) {
         Object.keys(logicEngine.methods).forEach((methodName) => {
@@ -68,6 +77,7 @@ export function RuleForm() {
         console.error("logicEngine.methods is not an object:", logicEngine.methods);
     }
 
+    /** The default values for the form. */
     let defaultValues = {
         description: '',
         page: 0,
@@ -78,10 +88,12 @@ export function RuleForm() {
         prompt: 'Based on the context, answer the following question.',
     }
 
+    /** Adds a rule to the rule conditions. */
     const addRule = () => {
         setRuleConditions([...ruleConditions, { type: '', value: '', open: false }]);
     }
 
+    /** Updates a rule condition. */
     const updateRule = (index: number, field: 'type' | 'value', value: string, open: boolean) => {
         const updatedRules = [...ruleConditions];
         updatedRules[index][field] = value;
@@ -89,16 +101,19 @@ export function RuleForm() {
         setRuleConditions(updatedRules);
     }
 
+    /** Removes a rule condition. */
     const removeRule = (index: number) => {
         const updatedRules = ruleConditions.filter((_, i) => i !== index)
         setRuleConditions(updatedRules)
     }
 
+    /** The form instance. */
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: defaultValues,
     });
 
+    /** Handles the form submission. */
     async function onSubmit(values: z.infer<typeof formSchema>) {
         console.log("Valori: ", values);
 
@@ -137,6 +152,7 @@ export function RuleForm() {
         }
     }
 
+    /** Initializes the database instance. */
     useEffect(() => {
         const setup = async () => {
             db.current = await getDB();
@@ -144,6 +160,7 @@ export function RuleForm() {
         setup();
     }, [db]);
 
+    /** Fetches the maximum number of pages from the database. */
     useEffect(() => {
         const getMaxPages = async () => {
             if (db.current) {

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react"
 
 type Theme = "dark" | "light" | "system"
 
+/** The props type of {@link ThemeProvider | `ThemeProvider`}. */
 type ThemeProviderProps = {
   children: React.ReactNode
   defaultTheme?: Theme
@@ -18,8 +19,12 @@ const initialState: ThemeProviderState = {
   setTheme: () => null,
 }
 
+/** The context for the theme provider. */
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
+/**
+ * Provides the theme to the application.
+ */
 export function ThemeProvider({
   children,
   defaultTheme = "system",
