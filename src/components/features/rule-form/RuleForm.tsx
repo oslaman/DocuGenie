@@ -63,6 +63,9 @@ export function RuleForm() {
     /** The database instance. */
     const db = useRef<any>(null);
 
+    /** The status of the rule form. */
+    const [status, setStatus] = useState<Status>("loading");
+
     /** The logic engine instance. */
     const logicEngine = new LogicEngine();
     logicEngine.addMethod("find", ([str, keyword]: [string, string]) => new RegExp(`\\b${keyword}\\b`, 'i').test(str));
@@ -163,20 +166,35 @@ export function RuleForm() {
     /** Fetches the maximum number of pages from the database. */
     useEffect(() => {
         const getMaxPages = async () => {
-            if (db.current) {
-                setMaxPage(await getTotalPages(db.current))
-            } else {
-                db.current = await getDB()
-                setMaxPage(await getTotalPages(db.current))
+            setStatus("loading");
+            let totalPages = 0;
+            if (!db.current) {
+                db.current = await getDB();
+            }
+
+            try {
+                totalPages = await getTotalPages(db.current);
+                if (totalPages > 0) {
+                    setMaxPage(totalPages);
+                    setStatus("available");
+                } else {
+                    setStatus("unavailable");
+                }
+            } catch {
+                setMaxPage(0);
+                setStatus("failed to load");
             }
         };
 
         getMaxPages();
     }, [maxPage])
 
-    return (
-        maxPage > 0 ?
-            <Form {...form}>
+    const renderContent = () => {
+        switch (status) {
+            case "loading":
+                return <div>Loading...</div>
+            case "available":
+                return <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 w-full md:w-2/3">
                     <FormField
                         control={form.control}
@@ -427,6 +445,17 @@ export function RuleForm() {
                     />
                     <Button type="submit">Add rule</Button>
                 </form>
-            </Form> : <div>No pages found</div>
+            </Form>
+            case "unavailable":
+                return <div>To create a rule, you need to have at least one page in the database.</div>
+            case "failed to load":
+                return <div>Failed to load</div>
+        }
+    }
+
+    return (
+        <>
+            {renderContent()}
+        </>
     );
 }
