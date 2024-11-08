@@ -222,9 +222,12 @@ export async function updateRuleNode(pg: PGliteWorker, nodeId: string, updatedFi
         if (parentId) {
             template += `, parent_id = $6`;
             template += ` WHERE id = $7`;
+            console.log("Updating parent")
             await pg.query(template, [updatedFields.name, conditions, updatedFields.prompt, updatedFields.page, updatedFields.salience, parentId, nodeId]);
         } else {
+            template += `, parent_id = NULL`;
             template += ` WHERE id = $6`;
+            console.warn("Updating no parent")
             await pg.query(template, [updatedFields.name, conditions, updatedFields.prompt, updatedFields.page, updatedFields.salience, nodeId]);
         }
 

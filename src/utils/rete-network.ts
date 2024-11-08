@@ -168,7 +168,6 @@ export class RulesEngine {
 
 
         if (satisfiedRules.length > 0) {
-
             // Sort the satisfied rules by salience and timestamp for LIFO evaluation
             const selectedRule = satisfiedRules.sort((a, b) => {
                 // If the salience is the same, sort by timestamp

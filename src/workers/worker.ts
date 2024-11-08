@@ -84,20 +84,30 @@ self.addEventListener('message', async (event) => {
 
     case 'search': {
       const t0 = performance.now();
-      let output = await classifier(data.query, {
-        pooling: 'mean',
-        normalize: true,
-      });
 
-      const embedding = Array.from(output.data);
+      if (data.page) {
+        self.postMessage({
+          status: 'search_complete',
+          query: data.query,
+          prompt: data.prompt,
+          page: data.page
+        });
+      } else {
+        let output = await classifier(data.query, {
+          pooling: 'mean',
+          normalize: true,
+        });
 
-      self.postMessage({
-        status: 'search_complete',
-        query: data.query,
-        embedding,
-        prompt: data.prompt,
-        page: data.page
-      });
+        const embedding = Array.from(output.data);
+        self.postMessage({
+          status: 'search_complete',
+          query: data.query,
+          embedding,
+          prompt: data.prompt,
+          page: data.page
+        });
+      }
+
       const t1 = performance.now();
       console.log(`Search completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
       break;
@@ -109,7 +119,7 @@ self.addEventListener('message', async (event) => {
       });
 
       const prompt = data.prompt || "Based on the context, answer the following question.";
-      
+
       const system_prompt = "Context information is below. The pages are context and the pages are in order respectively, so you can use them to answer the question. Mention the page number in your answer.\n\n" +
         "---------------------\n" +
         data.context + "\n" +
@@ -146,7 +156,7 @@ self.addEventListener('message', async (event) => {
           isFinal: false
         });
       }
-        self.postMessage({
+      self.postMessage({
         status: 'text_generation_complete',
         output: await generator.getMessage(),
         isFinal: true

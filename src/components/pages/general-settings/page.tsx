@@ -139,7 +139,7 @@ export default function GeneralSettingsPage() {
                     </BreadcrumbItem>
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
-                        <BreadcrumbPage>Documents</BreadcrumbPage>
+                        <BreadcrumbPage>General</BreadcrumbPage>
                     </BreadcrumbItem>
                 </BreadcrumbList>
             </Breadcrumb>

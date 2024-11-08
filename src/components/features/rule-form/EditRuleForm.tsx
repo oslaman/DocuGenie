@@ -192,6 +192,7 @@ export function EditRuleForm() {
                             rule_option: conditions,
                             previous_rule: ruleData.parent || '',
                             priority: ruleData.rule.salience,
+                            page: ruleData.rule.page,
                         });
                         setStatus("available");
                     } else {
@@ -218,8 +219,10 @@ export function EditRuleForm() {
             const conditions = ruleConditions.map((ruleCondition) => ({
                 [ruleCondition.type]: [{ "var": "query" }, ruleCondition.value]
             }));
+
             const rule = new RuleNode(values.description, conditions, values.prompt, values.page, values.priority);
             if (ruleId) {
+                console.log("Previous rule: ", values.previous_rule)
                 await updateRuleNode(db.current, ruleId, rule, values.previous_rule);
                 console.log("Rule updated:", values);
                 window.location.href = "/settings/rules";
@@ -272,6 +275,7 @@ export function EditRuleForm() {
                                                                     <CommandItem
                                                                         onSelect={() => {
                                                                             setValue('')
+                                                                            field.onChange('')
                                                                             setOpen(false)
                                                                         }}
                                                                         className="justify-center text-sm text-muted-foreground"
