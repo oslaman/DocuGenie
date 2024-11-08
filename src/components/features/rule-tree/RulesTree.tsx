@@ -157,49 +157,41 @@ const RulesTree: React.FC = () => {
     };
 
     const onNodesDelete = useCallback(
-        (deleted: any[]) => {
+        (deleted: Node[]) => {
             console.log("Nodes deleted", deleted);
-            setEdges(
-                deleted.reduce(async (acc: Edge[], node: Node) => {
-                    const incomers = getIncomers(node, nodes, edges);
-                    const outgoers = getOutgoers(node, nodes, edges);
-                    const connectedEdges = getConnectedEdges([node], edges);
+            
+            const deletedNode = deleted[0];
+            const incomers = getIncomers(deletedNode, nodes, edges);
+            const outgoers = getOutgoers(deletedNode, nodes, edges);
+            const connectedEdges = getConnectedEdges([deletedNode], edges);
 
-                    const remainingEdges = acc.filter(
-                        (edge: any) => !connectedEdges.includes(edge),
-                    );
-
-                    const createdEdges = incomers.flatMap(({ id: source }) =>
-                        outgoers.map(({ id: target }) => ({
-                            id: `${source}->${target}`,
-                            source,
-                            target,
-                            type: edgeType,
-                            animated: true
-                        })),
-                    );
-
-                    console.log("Deleted nodes", deleted);
-                    console.log("Node to be deleted", deleted[0]);
-
-                    try {
-                        await removeRuleNode(db.current, deleted[0].data.rule.id, deleted[0].data.rule.parent.toString());
-                        setTableData((tableData) => tableData.filter((t) => t.id !== deleted[0].id));
-                        toast.success(`Rule "${deleted[0].data.rule.id}" deleted.`)
-                    } catch (error) {
-                        toast.error(`Error deleting rule "${deleted[0].data.rule.id}".`)
-                    }
-
-                    // remove node from rules
-                    // this should remove the node from the rules array, but messes up the tree layout
-                    // const updatedRules = rules.filter((rule: Rules) => rule.id !== deleted[0].id);
-                    // setRules(updatedRules);
-
-                    return [...remainingEdges, ...createdEdges];
-                }, edges),
+            const remainingEdges = edges.filter(
+                (edge) => !connectedEdges.includes(edge)
             );
+
+            const createdEdges = incomers.flatMap(({ id: source }) =>
+                outgoers.map(({ id: target }) => ({
+                    id: `${source}->${target}`,
+                    source,
+                    target,
+                    type: edgeType,
+                    animated: true
+                }))
+            );
+
+            setEdges([...remainingEdges, ...createdEdges]);
+
+            removeRuleNode(db.current, deletedNode.data.rule.id, deletedNode.data.rule.parent.toString())
+                .then(() => {
+                    setTableData((tableData) => tableData.filter((t) => t.id !== deletedNode.id));
+                    toast.success(`Rule "${deletedNode.data.rule.id}" deleted.`);
+                })
+                .catch((error) => {
+                    toast.error(`Error deleting rule "${deletedNode.data.rule.id}".`);
+                    console.error(error);
+                });
         },
-        [nodes, edges],
+        [nodes, edges]
     );
 
     const onConnect = useCallback(
