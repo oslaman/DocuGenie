@@ -1,6 +1,7 @@
 # DocuGenie
 
 [Repository GitHub del progetto](https://github.com/oslaman/DocuGenie)
+
 [Repository GitHub relativa all'estrazione](https://github.com/oslaman/pdf-chunking.git)
 
 ## Descrizione del progetto

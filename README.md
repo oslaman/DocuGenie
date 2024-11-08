@@ -3,6 +3,10 @@
 
 DocuGenie is a RAG-based AI app to answer document related questions. It uses PGLite to store the documents and embeddings and a local LLM with Transformers.js and WebLLM to answer the questions.
 
+The documentation for the project is available [here](https://github.com/oslaman/DocuGenie/blob/main/documentazione/Doumentazione%20DocuGenie.md).
+
+The documentation for the codebase is available [here](https://github.com/oslaman/DocuGenie/blob/main/docs/typedoc/index.html).
+
 ## Features
 
 - Local document embedding and retrieval
