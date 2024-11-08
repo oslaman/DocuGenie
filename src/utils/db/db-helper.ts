@@ -58,8 +58,9 @@ export const initSchema = async (pg: PGliteWorker) => {
         created_at timestamp default current_timestamp
       );
 
+      -- Create indexes for the chunks table
       create index if not exists chunks_hnsw on chunks using hnsw (embedding vector_ip_ops);
-      create index if not exists chunks_gin on chunks using gin (content gin_trgm_ops); -- Index per BM25
+      create index if not exists chunks_gin on chunks using gin (content gin_trgm_ops); -- Index for BM25
     `);
 };
 
@@ -79,8 +80,8 @@ export const countRows = async (pg: PGliteWorker, table: string) => {
  * @param {PGliteWorker} pg - The PGliteWorker instance.
  */
 export const clearDb = async (pg: PGliteWorker) => {
-    await pg.query(`drop table if exists chunks;`);
-    await pg.query(`drop table if exists rules;`);
+    await pg.query(`truncate table chunks cascade;`);
+    await pg.query(`truncate table rules cascade;`);
     await initSchema(pg);
 };
 

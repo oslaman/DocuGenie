@@ -76,6 +76,14 @@ export const search = async (
     limit = 3,
 ) => {
     let vectorResults;
+
+    /**
+     * Search for chunks using vector similarity
+     * <#> is a system operator for computing the inner product of two vectors. 
+     * It determines whether the vectors point in the same or opposite directions.
+     * The inner product is negative, because PostgreSQL only supports ASC order index scans on operators.
+     * @see https://github.com/pgvector/pgvector?tab=readme-ov-file#querying
+    */
     vectorResults = await pg.query(
         `
           select * from chunks
@@ -86,6 +94,14 @@ export const search = async (
         [JSON.stringify(embedding), -Number(match_threshold), Number(limit)],
     );
 
+    /**
+     * Search for chunks using BM25
+     * ts_rank_cd is a system function for computing a score showing how well a tsvector matches a tsquery
+     * to_tsvector converts the text into a vector of words, ignoring stop words
+     * plainto_tsquery converts the query into a vector of words
+     * @@ is a boolean operator that checks if the query is a subset of the text
+     * these operators are built-in operators provided by postgres
+     */
     const bm25Results = await pg.query(
         `
       select *, ts_rank_cd(to_tsvector(content), plainto_tsquery($1)) as rank

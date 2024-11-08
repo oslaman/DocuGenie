@@ -55,6 +55,7 @@ export default function DocumentForm() {
                     console.log("Result: ", result)
                     console.log("Seeding....")
                     await seedSingleDb(db.current, result as any);
+                    setProgress(100);
                     break;
                 }
             }
@@ -183,7 +184,10 @@ export default function DocumentForm() {
                 const content = e.target?.result as string;
                 const jsonData = JSON.parse(content);
 
-                const textWithPages: TextWithPage[] = jsonData.document_body.map((entry: any) => ({
+                console.log(jsonData)
+                console.log(jsonData.pages)
+
+                const textWithPages: TextWithPage[] = jsonData.pages.map((entry: any) => ({
                     text: entry.text,
                     pageNumber: entry.page
                 }));

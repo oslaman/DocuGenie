@@ -54,6 +54,7 @@ export class RuleNode {
      * @param {RuleNode} ruleNode - The RuleNode to add as a child.
      */
     addChild(ruleNode: RuleNode): void {
+        // Set the timestamp of the child node to the current timestamp for LIFO evaluation
         ruleNode.timestamp = Date.now();
         this.children.push(ruleNode);
     }
@@ -69,7 +70,7 @@ export class RuleNode {
         console.table(JSON.stringify(rule));
         const isSatisfied = this.logicEngine.build(rule)(facts);
         console.log(`Evaluating ${this.name}: ${isSatisfied}`);
-        return isSatisfied ? this : null;
+        return isSatisfied && typeof isSatisfied === 'boolean' ? this : null;
     }
 
     /**
@@ -81,6 +82,8 @@ export class RuleNode {
         const satisfiedChildren: RuleNode[] = [];
         this.children.forEach(child => {
             const result = child.evaluate(facts);
+
+            // If the child is satisfied, evaluate its children and add it to the satisfied children array
             if (result) {
                 satisfiedChildren.push(...result.evaluateChildren(facts));
                 satisfiedChildren.push(result);
@@ -163,11 +166,16 @@ export class RulesEngine {
             }
         });
 
+
         if (satisfiedRules.length > 0) {
+
+            // Sort the satisfied rules by salience and timestamp for LIFO evaluation
             const selectedRule = satisfiedRules.sort((a, b) => {
+                // If the salience is the same, sort by timestamp
                 if (a.salience === b.salience) {
                     return b.timestamp - a.timestamp;
                 }
+                // Otherwise, sort by salience
                 return b.salience - a.salience;
             })[0];
             console.log(`Rule ${selectedRule.name} is executed.`);

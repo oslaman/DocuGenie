@@ -36,7 +36,6 @@ export default function GeneralSettingsPage() {
 
     /** Fetches the data from the database. */
     const fetchData = async () => {
-
         if (!db.current) {
             db.current = await getDB()
         }
@@ -86,9 +85,10 @@ export default function GeneralSettingsPage() {
         if (selectedTable) {
             if (confirm(`Are you sure you want to clear the "${selectedTable}" table? This action cannot be undone.`)) {
                 try {
-                    await clearTable(db.current, selectedTable)
-                    setSelectedTable('')
-                    toast.success(`Table "${selectedTable}" cleared.`)
+                    await clearTable(db.current, selectedTable).then(() => {
+                        setSelectedTable('')
+                        toast.success(`Table "${selectedTable}" cleared.`)
+                    })
                 } catch (error) {
                     toast.error(`Error clearing table "${selectedTable}".`)
                 }
@@ -104,8 +104,10 @@ export default function GeneralSettingsPage() {
 
         if (confirm('Are you sure you want to clear all tables? This action cannot be undone.')) {
             try {
-                await clearDb(db.current)
-                toast.success('All tables cleared.')
+                await clearDb(db.current).then(() => {
+                    toast.success('All tables cleared.')
+                    fetchData()
+                })
             } catch (error) {
                 toast.error('Error clearing tables.')
             }
@@ -207,9 +209,9 @@ export default function GeneralSettingsPage() {
                         <Button variant="destructive" onClick={removeAllTables} className="w-fit">
                             <AlertTriangle className="mr-2 h-4 w-4" /> Clear All Tables
                         </Button>
-                        <Button variant="destructive" onClick={deleteDatabase} className="w-fit">
+                        {/* <Button variant="destructive" onClick={deleteDatabase} className="w-fit">
                             <Database className="mr-2 h-4 w-4" /> Delete Entire Database
-                        </Button>
+                        </Button> */}
                     </CardContent>
                 </Card>
             </div>
