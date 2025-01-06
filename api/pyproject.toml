@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "api"
+version = "0.1.0"
+description = ""
+authors = ["Osama <oslaman@proton.me>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12.4"
+fastapi = "^0.115.6"
+uvicorn = "^0.34.0"
+pymupdf = "^1.25.1"
+langchain = "^0.3.13"
+python-multipart = "^0.0.20"
+
+
+[[tool.poetry.source]]
+name = "pytorch_cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
