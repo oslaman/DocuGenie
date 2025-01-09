@@ -1,5 +1,10 @@
 import { Separator } from "@/components/ui/separator";
-import RulesForm from "./rules-form";
+import { RuleForm } from "@/components/features/rule-form/RuleForm";
+import { EditRuleForm } from "@/components/features/rule-form/EditRuleForm";
+import { RulesDashboard } from "./rules-dashboard";
+import { RulesContext } from "@/context/context";
+import { useState } from "react";
+import { Rules } from "@/utils/interfaces";
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -9,50 +14,58 @@ import {
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 
-import { EditRuleForm } from "@/components/features/rule-form/EditRuleForm";
-
-/** The props type of {@link RulesPage | `RulesPage`}. */
 interface RulesPageProps {
     id?: string;
 }
 
-/**
- * Renders the page for managing rules (all rules or a single rule).
- * @category Component
- */
 export default function RulesPage({ id }: RulesPageProps) {
+    const [rules, setRules] = useState<Rules[]>([]);
+    const isNew = id === 'new';
+    const pageTitle = isNew ? "New Rule" : id ? `Edit Rule ${id}` : "Rules";
+    const description = isNew ? "Create a new rule" : id ? "Update your rule settings" : "Manage your rules";
+
     return (
         <div className="space-y-6">
-                <Breadcrumb>
-                    <BreadcrumbList>
-                        <BreadcrumbItem>
-                            <BreadcrumbPage>Settings</BreadcrumbPage>
-                        </BreadcrumbItem>
-                        <BreadcrumbSeparator />
-                        <BreadcrumbItem>
-                            {id ? (
-                                <BreadcrumbLink href={`/settings/rules`}>Rules</BreadcrumbLink>
-                            ) : (
-                                <BreadcrumbPage>Rules</BreadcrumbPage>
-                            )}
-                        </BreadcrumbItem>
-                        {id && (
-                            <>
-                                <BreadcrumbSeparator />
-                                <BreadcrumbItem>
-                                    <BreadcrumbPage>{`Rule ${id}`}</BreadcrumbPage>
-                                </BreadcrumbItem>
-                            </>
+            <Breadcrumb>
+                <BreadcrumbList>
+                    <BreadcrumbItem>
+                        <BreadcrumbLink href="/settings">Settings</BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                        {id ? (
+                            <BreadcrumbLink href="/settings/rules">Rules</BreadcrumbLink>
+                        ) : (
+                            <BreadcrumbPage>Rules</BreadcrumbPage>
                         )}
-                    </BreadcrumbList>
-                </Breadcrumb>
+                    </BreadcrumbItem>
+                    {id && (
+                        <>
+                            <BreadcrumbSeparator />
+                            <BreadcrumbItem>
+                                <BreadcrumbPage>{isNew ? "New Rule" : `Rule ${id}`}</BreadcrumbPage>
+                            </BreadcrumbItem>
+                        </>
+                    )}
+                </BreadcrumbList>
+            </Breadcrumb>
 
-                <h3 className="text-lg font-medium">{id ? `Edit rule ${id}` : "Rules"}</h3>
+            <div>
+                <h3 className="text-lg font-medium">{pageTitle}</h3>
                 <p className="text-sm text-muted-foreground">
-                    Update your rule settings.
+                    {description}
                 </p>
+            </div>
             <Separator />
-            {id ? <EditRuleForm /> : <RulesForm />}
+            <RulesContext.Provider value={{ rules, setRules }}>
+                {isNew ? (
+                    <RuleForm />
+                ) : id ? (
+                    <EditRuleForm />
+                ) : (
+                    <RulesDashboard />
+                )}
+            </RulesContext.Provider>
         </div>
     );
 }

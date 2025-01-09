@@ -27,6 +27,8 @@ import { getAllRuleNodes, insertRootRuleNode, insertChildRuleNode } from '@/util
 import { getTotalPages } from "@/utils/db/db-documents";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { Status } from "@/utils/types";
 
 const formSchema = z.object({
     description: z.string().min(2),
@@ -46,6 +48,7 @@ const formSchema = z.object({
  * @category Component
  */
 export function RuleForm() {
+    const navigate = useNavigate();
     /** Whether the popover is open. */
     const [open, setOpen] = useState(false)
     /** The value of the selected rule. */
@@ -62,6 +65,8 @@ export function RuleForm() {
     const [maxPage, setMaxPage] = useState(0);
     /** The database instance. */
     const db = useRef<any>(null);
+    /** The available rules to be displayed in the dropdown. */
+    const [availableRules, setAvailableRules] = useState<Rules[]>([]);
 
     /** The status of the rule form. */
     const [status, setStatus] = useState<Status>("loading");
@@ -118,8 +123,6 @@ export function RuleForm() {
 
     /** Handles the form submission. */
     async function onSubmit(values: z.infer<typeof formSchema>) {
-        console.log("Valori: ", values);
-
         try {
             let rule: RuleNode;
             let conditions: any[] = [];
@@ -135,21 +138,8 @@ export function RuleForm() {
                 await insertChildRuleNode(db.current, rule, values.previous_rule);
             }
 
-            const allNodes = await getAllRuleNodes(db.current);
-            const updatedRules = allNodes.map((node) => ({
-                id: node.id,
-                rule: node.rule,
-                parent: node.parent
-            }));
-
-            setRules(updatedRules);
-
-            form.reset(defaultValues);
-            setValue('');
-            setOpen(false);
-            toast("Rule created", {
-                description: new Date().toLocaleString(),
-            })
+            toast.success("Rule created successfully");
+            navigate('/settings/rules');
         } catch (error) {
             toast.error('Error creating rule.')
         }
@@ -189,20 +179,39 @@ export function RuleForm() {
         getMaxPages();
     }, [maxPage])
 
+    useEffect(() => {
+        const fetchRules = async () => {
+            try {
+                if (!db.current) {
+                    db.current = await getDB();
+                }
+                const allRules = await getAllRuleNodes(db.current);
+                setAvailableRules(allRules.map(rule => ({
+                    id: rule.id,
+                    rule: rule.rule,
+                    parent: rule.parent?.toString() || ''
+                })));
+            } catch (error) {
+                console.error("Error fetching rules:", error);
+            }
+        };
+
+        fetchRules();
+    }, []);
+
     const renderContent = () => {
         switch (status) {
             case "loading":
                 return <div>Loading...</div>
             case "available":
                 return <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 w-full md:w-2/3">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                     <FormField
                         control={form.control}
                         name="previous_rule"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel data-testid="from-rule-label">Parent rule</FormLabel>
-                                <br />
+                                <FormLabel>Parent rule</FormLabel><br />
                                 <FormControl>
                                     <Popover open={open} onOpenChange={setOpen}>
                                         <PopoverTrigger asChild>
@@ -210,24 +219,24 @@ export function RuleForm() {
                                                 variant="outline"
                                                 role="combobox"
                                                 aria-expanded={open}
-                                                className="w-fit justify-between"
                                             >
-                                                {value
-                                                    ? rules.find((rule) => rule.id === field.value)?.rule.name
+                                                {field.value
+                                                    ? availableRules.find((rule) => rule.id === field.value)?.rule.name
                                                     : "Select a parent rule..."}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-[200px] p-0">
+                                        <PopoverContent className="w-full p-0" align="start">
                                             <Command>
-                                                <CommandInput placeholder="Search rule..." />
+                                                <CommandInput placeholder="Search rules..." />
                                                 <CommandList>
                                                     <CommandEmpty>No rule found.</CommandEmpty>
-                                                    {value && (
+                                                    {field.value && (
                                                         <CommandGroup>
                                                             <CommandItem
                                                                 onSelect={() => {
                                                                     setValue('')
+                                                                    field.onChange('')
                                                                     setOpen(false)
                                                                 }}
                                                                 className="justify-center text-sm text-muted-foreground"
@@ -238,15 +247,14 @@ export function RuleForm() {
                                                         </CommandGroup>
                                                     )}
                                                     <CommandGroup>
-                                                        {rules.map((rule) => (
-                                                            console.log("Rule: ", rule),
+                                                        {availableRules.map((rule) => (
                                                             <CommandItem
                                                                 key={rule.id}
                                                                 value={rule.rule.name}
                                                                 onSelect={() => {
                                                                     setValue(rule.id)
-                                                                    setOpen(false)
                                                                     field.onChange(rule.id)
+                                                                    setOpen(false)
                                                                 }}
                                                             >
                                                                 <Check
@@ -265,7 +273,7 @@ export function RuleForm() {
                                     </Popover>
                                 </FormControl>
                                 <FormDescription>
-                                    You can only choose one parent rule.
+                                    Select an existing rule as parent (optional)
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
@@ -454,8 +462,8 @@ export function RuleForm() {
     }
 
     return (
-        <>
+        <div className="space-y-6">
             {renderContent()}
-        </>
+        </div>
     );
 }

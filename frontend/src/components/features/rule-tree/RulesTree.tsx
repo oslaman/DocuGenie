@@ -182,7 +182,7 @@ const RulesTree: React.FC = () => {
 
             removeRuleNode(db.current, deletedNode.data.rule.id, deletedNode.data.rule.parent.toString())
                 .then(() => {
-                    // setTableData((tableData) => tableData.filter((t) => t.id !== deletedNode.id));
+                    setRules((prevRules) => prevRules.filter((rule) => rule.id !== deletedNode.data.rule.id));
                     toast.success(`Rule "${deletedNode.data.rule.id}" deleted.`);
                 })
                 .catch((error) => {
@@ -190,7 +190,7 @@ const RulesTree: React.FC = () => {
                     console.error(error);
                 });
         },
-        [nodes, edges]
+        [nodes, edges, setRules]
     );
 
     const onConnect = useCallback(

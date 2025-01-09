@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { Rules, WorkerMessageEvent } from '@/utils/interfaces';
 import { sidebarNavItems } from '@/utils/constants';
@@ -9,7 +9,6 @@ import { SidebarNav } from '@/components/layout/sidebar-nav';
 import DocumentsPage from './documents/page';
 import RulesPage from './rules/page';
 import GeneralSettingsPage from './general-settings/page';
-import { useParams } from 'react-router-dom';
 
 import '@/App.css';
 
@@ -20,20 +19,30 @@ import '@/App.css';
 const Settings = () => {
     const location = useLocation();
     const { ruleId } = useParams();
-
-    const renderPage = () => {
-        switch (location.pathname) {
-            case "/settings/general":
-                return <GeneralSettingsPage />;
-            case "/settings/documents":
-                return <DocumentsPage />;
-            case "/settings/rules":
-                return <RulesPage />;
-            case `/settings/rules/${ruleId}`:
-                return <EditRuleForm />;
-            default:
-                return <DocumentsPage />;
+    
+    const getPageContent = () => {
+        const path = location.pathname;
+        
+        if (path === "/settings/general") {
+            return <GeneralSettingsPage />;
         }
+        
+        if (path === "/settings/documents") {
+            return <DocumentsPage />;
+        }
+        
+        // Rules section handling
+        if (path.startsWith("/settings/rules")) {
+            if (path === "/settings/rules/new") {
+                return <RulesPage id="new" />;
+            }
+            if (ruleId) {
+                return <RulesPage id={ruleId} />;
+            }
+            return <RulesPage />;
+        }
+        
+        return <DocumentsPage />;
     };
 
     return (
@@ -50,7 +59,7 @@ const Settings = () => {
                     <SidebarNav items={sidebarNavItems} />
                 </aside>
                 <main className="flex-1 lg:max-w-2xl w-full">
-                    {renderPage()}
+                    {getPageContent()}
                 </main>
             </div>
         </div>

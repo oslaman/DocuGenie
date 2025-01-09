@@ -26,6 +26,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+import { useNavigate } from "react-router-dom";
+
 /** The props type of {@link DataTable | `DataTable`}. */
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -41,6 +43,7 @@ export function DataTable<TData, TValue>({
   data,
 }: DataTableProps<TData, TValue>) {
   const { rules, setRules } = useRulesContext();
+  const navigate = useNavigate();
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
     []
@@ -75,7 +78,13 @@ export function DataTable<TData, TValue>({
           }
           className="max-w-sm"
         />
-        <Button onClick={() => console.log('test')} variant="outline" className="max-w-sm">Create Rule</Button>
+        <Button 
+          onClick={() => navigate('/settings/rules/new')} 
+          variant="outline" 
+          className="max-w-sm"
+        >
+          Create Rule
+        </Button>
       </div>
       <div className="rounded-md border">
         <Table>
