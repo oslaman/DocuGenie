@@ -16,14 +16,7 @@ import { Rules } from "@/utils/interfaces";
 
 import { getDB } from '@/utils/db/db-helper';
 import { removeRuleNode } from '@/utils/db/db-rules';
-
-export type RuleItems = {
-  [x: string]: any
-  id: string
-  name: string
-  salience: number
-  children: number
-}
+import { RuleItems } from '@/utils/types';
 
 /**
  * Renders the columns for the rule table.

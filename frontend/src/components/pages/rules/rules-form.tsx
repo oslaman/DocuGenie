@@ -1,7 +1,8 @@
 import { RulesContext } from "@/context/context";
 import RulesTree from "@/components/features/rule-tree/RulesTree";
 import { useState } from "react";
-import { RuleForm } from "@/components/features/rule-form/RuleForm";
+import { RuleForm } from "@/components/features/rule-form/RuleForm";    
+import RulesTable from "@/components/features/rule-table/RulesTable";
 import { useEffect, useRef } from "react";
 import { Rules } from "@/utils/interfaces";
 
@@ -62,6 +63,7 @@ export default function RulesForm() {
         <div className="dashboard-container w-full flex-col gap-4">
             <RulesContext.Provider value={{ rules, setRules }}>
                 <RuleForm />
+                <RulesTable />
                 <RulesTree />
             </RulesContext.Provider>
         </div>

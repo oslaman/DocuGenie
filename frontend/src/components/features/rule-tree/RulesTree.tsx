@@ -16,8 +16,7 @@ import {
 import {ReactFlow} from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useRulesContext } from '@/context/context';
-import { DataTable } from '@/components/features/rule-table/data-table';
-import { RuleItems, columns } from "@/components/features/rule-table/columns"
+
 import { Rules } from '@/utils/interfaces';
 import dagre from '@dagrejs/dagre';
 import { Button } from '@/components/ui/button';
@@ -25,6 +24,7 @@ import { toast } from "sonner";
 
 import { getDB } from '@/utils/db/db-helper';
 import { removeRuleNode } from '@/utils/db/db-rules';
+import { RuleItems } from '@/utils/types';
 
 const position = { x: 0, y: 0 };
 const edgeType = 'smoothstep';
@@ -74,7 +74,7 @@ const getLayoutedElements = (nodes: any[], edges: any[], direction = 'TB') => {
  */
 const RulesTree: React.FC = () => {
     const { rules, setRules } = useRulesContext();
-    const [tableData, setTableData] = useState<RuleItems[]>([]);
+    
 
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -86,7 +86,6 @@ const RulesTree: React.FC = () => {
         const fetchData = async () => {
             db.current = await getDB();
             const data = await getRulesData(rules);
-            setTableData(data);
 
             const newNodes: any[] = [];
             const newEdges: any[] = [];
@@ -183,7 +182,7 @@ const RulesTree: React.FC = () => {
 
             removeRuleNode(db.current, deletedNode.data.rule.id, deletedNode.data.rule.parent.toString())
                 .then(() => {
-                    setTableData((tableData) => tableData.filter((t) => t.id !== deletedNode.id));
+                    // setTableData((tableData) => tableData.filter((t) => t.id !== deletedNode.id));
                     toast.success(`Rule "${deletedNode.data.rule.id}" deleted.`);
                 })
                 .catch((error) => {
@@ -201,7 +200,6 @@ const RulesTree: React.FC = () => {
 
     return (
         <React.Fragment>
-            <DataTable columns={columns} data={tableData} />
             <div className="container mx-auto w-full h-96">
                 <ReactFlow
                     ref={ref}

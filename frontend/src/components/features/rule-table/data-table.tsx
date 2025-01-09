@@ -66,7 +66,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div>
-      <div className="flex items-center py-4">
+      <div className="flex items-center py-4 justify-between w-full">
         <Input
           placeholder="Filter names..."
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
@@ -75,6 +75,7 @@ export function DataTable<TData, TValue>({
           }
           className="max-w-sm"
         />
+        <Button onClick={() => console.log('test')} variant="outline" className="max-w-sm">Create Rule</Button>
       </div>
       <div className="rounded-md border">
         <Table>
