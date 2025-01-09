@@ -19,7 +19,7 @@ import { RuleNode } from "@/utils/rete-network";
 import { getTotalPages } from "@/utils/db/db-documents";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-
+import { Status } from "@/utils/types";
 /**
  * Schema for the rule form.
  */
@@ -142,7 +142,7 @@ export function EditRuleForm() {
     useEffect(() => {
         if (isDirty) {
             window.addEventListener('beforeunload', beforeUnloadListener);
-            
+
             return () => {
                 window.removeEventListener('beforeunload', beforeUnloadListener);
             };
@@ -241,7 +241,7 @@ export function EditRuleForm() {
             case "available":
                 return (
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                             <FormField
                                 control={form.control}
                                 name="previous_rule"
@@ -255,8 +255,11 @@ export function EditRuleForm() {
                                                     <Button
                                                         variant="outline"
                                                         role="combobox"
+                                                        className={cn(
+                                                            "w-[200px] justify-between",
+                                                            !field.value && "text-muted-foreground",
+                                                        )}
                                                         aria-expanded={open}
-                                                        className="w-fit justify-between"
                                                         data-testid="from-rule-button"
                                                     >
                                                         {value && rules.find((rule: Rules) => rule.id === value)
@@ -277,9 +280,7 @@ export function EditRuleForm() {
                                                                             setValue('')
                                                                             field.onChange('')
                                                                             setOpen(false)
-                                                                        }}
-                                                                        className="justify-center text-sm text-muted-foreground"
-                                                                    >
+                                                                        }}                                                                    >
                                                                         <X className="mr-2 h-4 w-4" />
                                                                         Clear selection
                                                                     </CommandItem>
@@ -345,7 +346,10 @@ export function EditRuleForm() {
                                                             variant="outline"
                                                             role="combobox"
                                                             aria-expanded={ruleCondition.open}
-                                                            className="w-fit justify-between"
+                                                            className={cn(
+                                                                "w-[200px] justify-between",
+                                                                !ruleCondition.type && "text-muted-foreground",
+                                                            )}
                                                         >
                                                             {ruleCondition.type
                                                                 ? allowedConditions.find((conditionName) => conditionName === ruleCondition.type)
@@ -365,7 +369,6 @@ export function EditRuleForm() {
                                                                                 updateRule(index, 'type', '', !ruleCondition.open)
                                                                                 setOpen(false)
                                                                             }}
-                                                                            className="justify-center text-sm text-muted-foreground"
                                                                         >
                                                                             <X className="mr-2 h-4 w-4" />
                                                                             Clear selection
@@ -415,7 +418,10 @@ export function EditRuleForm() {
                                                 </Button>
                                             </div>
                                         ))}
-                                        <Button type="button" onClick={addRule}>Add condition</Button>
+                                        <Button type="button" variant="outline"
+                                            size="sm"
+                                            className="mt-2"
+                                            onClick={addRule}>Add condition</Button>
                                         <FormDescription>
                                             You can choose multiple conditions.
                                         </FormDescription>
@@ -482,8 +488,8 @@ export function EditRuleForm() {
     };
 
     return (
-        <>
+        <div className="space-y-6">
             {renderContent()}
-        </>
+        </div>
     );
 }
