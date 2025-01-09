@@ -60,7 +60,8 @@ export const initSchema = async (pg: PGliteWorker) => {
 
       -- Create indexes for the chunks table
       create index if not exists chunks_hnsw on chunks using hnsw (embedding vector_ip_ops);
-      create index if not exists chunks_gin on chunks using gin (content gin_trgm_ops); -- Index for BM25
+      create index if not exists chunks_gin on chunks using gin (content gin_trgm_ops); -- trigram matching
+      create index if not exists chunks_fts_idx ON chunks USING gin (to_tsvector('english', content)); -- full-text search
     `);
 };
 

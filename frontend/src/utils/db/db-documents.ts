@@ -95,25 +95,28 @@ export const search = async (
     );
 
     /**
-     * Search for chunks using BM25
+     * Search for chunks using pg_trgm
      * ts_rank_cd is a system function for computing a score showing how well a tsvector matches a tsquery
      * to_tsvector converts the text into a vector of words, ignoring stop words
      * plainto_tsquery converts the query into a vector of words
      * @@ is a boolean operator that checks if the query is a subset of the text
      * these operators are built-in operators provided by postgres
      */
-    const bm25Results = await pg.query(
+    const searchResults = await pg.query(
         `
-      select *, ts_rank_cd(to_tsvector(content), plainto_tsquery($1)) as rank
-      from chunks
-      where to_tsvector(content) @@ plainto_tsquery($1)
-      order by rank desc
-      limit $2;
+      select *, 
+               (ts_rank_cd(to_tsvector(content), plainto_tsquery($1)) + 
+                similarity(content, $1)) as rank
+        from chunks
+        where to_tsvector(content) @@ plainto_tsquery($1) 
+           or content % $1
+        order by rank desc
+        limit $2;
       `,
         [query, Number(limit)],
     );
 
-    const combinedResults = [...vectorResults.rows, ...bm25Results.rows]
+    const combinedResults = [...vectorResults.rows, ...searchResults.rows]
         .sort((a: any, b: any) => (a.distance || 0) - (b.distance || 0) + (b.rank || 0) - (a.rank || 0))
         .slice(0, limit);
 
@@ -144,18 +147,21 @@ export const searchWithPage = async (
         [page],
     );
 
-    const bm25Results = await pg.query(
+    const textResults = await pg.query(
         `
-      select *, ts_rank_cd(to_tsvector(content), plainto_tsquery($1)) as rank
-      from chunks
-      where to_tsvector(content) @@ plainto_tsquery($1)
-      order by rank desc
-      limit $2;
-      `,
+        SELECT *, 
+               (ts_rank_cd(to_tsvector(content), plainto_tsquery($1)) + 
+                similarity(content, $1)) as rank
+        FROM chunks
+        WHERE to_tsvector(content) @@ plainto_tsquery($1) 
+           OR content % $1
+        ORDER BY rank DESC
+        LIMIT $2;
+        `,
         [query, Number(limit)],
     );
 
-    const combinedResults = [...results.rows, ...bm25Results.rows]
+    const combinedResults = [...results.rows, ...textResults.rows]
     .sort((a: any, b: any) => (a.distance || 0) - (b.distance || 0) + (b.rank || 0) - (a.rank || 0))
     .slice(0, limit);
 

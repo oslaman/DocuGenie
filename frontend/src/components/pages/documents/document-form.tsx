@@ -166,7 +166,7 @@ export default function DocumentForm() {
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Document Upload</CardTitle>
+        <CardTitle>Document Upload {message || "Loading..."}</CardTitle>
         <CardDescription>
           Upload PDF documents for processing and analysis
         </CardDescription>

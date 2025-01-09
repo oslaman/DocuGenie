@@ -1,9 +1,10 @@
 [tool.poetry]
-name = "api"
+name = "app"
 version = "0.1.0"
 description = ""
 authors = ["Osama <oslaman@proton.me>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12.4"
@@ -12,6 +13,7 @@ uvicorn = "^0.34.0"
 pymupdf = "^1.25.1"
 langchain = "^0.3.13"
 python-multipart = "^0.0.20"
+pydantic-settings = "^2.2.1"
 
 
 [[tool.poetry.source]]

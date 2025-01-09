@@ -10,7 +10,6 @@ import { LogicEngine } from 'json-logic-engine'
  * @property {number} salience - The priority of the rule (default is 0).
  * @property {number} timestamp - The timestamp of the rule.
  * @property {string | null} parentId - The ID of the parent rule node.
- * @property {LogicEngine} logicEngine - The logic engine instance.
  */
 export class RuleNode {
     name: string;
@@ -21,7 +20,6 @@ export class RuleNode {
     salience: number;
     timestamp: number;
     parentId: string | null = null;
-    logicEngine: LogicEngine;
 
     /**
      * Constructs a RuleNode instance.
@@ -45,8 +43,6 @@ export class RuleNode {
         this.children = [];
         this.salience = salience;
         this.timestamp = Date.now();
-        this.logicEngine = new LogicEngine();
-        this.logicEngine.addMethod("find", ([str, keyword]: [string, string]) => new RegExp(`\\b${keyword}\\b`, 'i').test(str));
     }
 
     /**
@@ -62,13 +58,14 @@ export class RuleNode {
     /**
      * Evaluates the rule against the provided facts.
      * @param {Record<string, any>} facts - The facts to evaluate the rule against.
+     * @param {LogicEngine} logicEngine - The logic engine instance.
      * @returns {RuleNode | null} The RuleNode if the rule is satisfied, otherwise null.
      */
-    evaluate(facts: Record<string, any>): RuleNode | null {
+    evaluate(facts: Record<string, any>, logicEngine: LogicEngine): RuleNode | null {
         console.log('Facts:', JSON.stringify(facts));
         const rule = {"and": this.conditions.map((condition: any) => condition)};
         console.table(JSON.stringify(rule));
-        const isSatisfied = this.logicEngine.build(rule)(facts);
+        const isSatisfied = logicEngine.build(rule)(facts);
         console.log(`Evaluating ${this.name}: ${isSatisfied}`);
         return isSatisfied && typeof isSatisfied === 'boolean' ? this : null;
     }
@@ -76,16 +73,17 @@ export class RuleNode {
     /**
      * Evaluates the children of this node against the provided facts.
      * @param {Record<string, any>} facts - The facts to evaluate the children against.
+     * @param {LogicEngine} logicEngine - The logic engine instance.
      * @returns {RuleNode[]} An array of satisfied RuleNodes.
      */
-    evaluateChildren(facts: Record<string, any>): RuleNode[] {
+    evaluateChildren(facts: Record<string, any>, logicEngine: LogicEngine): RuleNode[] {
         const satisfiedChildren: RuleNode[] = [];
         this.children.forEach(child => {
-            const result = child.evaluate(facts);
+            const result = child.evaluate(facts, logicEngine);
 
             // If the child is satisfied, evaluate its children and add it to the satisfied children array
             if (result) {
-                satisfiedChildren.push(...result.evaluateChildren(facts));
+                satisfiedChildren.push(...result.evaluateChildren(facts, logicEngine));
                 satisfiedChildren.push(result);
             }
         });
@@ -130,15 +128,19 @@ export class RuleNode {
  * Manages a collection of root rules and evaluates them.
  * @class RulesEngine
  * @property {RuleNode[]} rootRules - The root rules of the network.
+ * @property {LogicEngine} logicEngine - The logic engine instance.
  */
 export class RulesEngine {
     rootRules: RuleNode[];
+    logicEngine: LogicEngine;
 
     /**
      * Constructs a RulesEngine instance.
      */
     constructor() {
         this.rootRules = [];
+        this.logicEngine = new LogicEngine();
+        this.logicEngine.addMethod("find", ([str, keyword]: [string, string]) => new RegExp(`\\b${keyword}\\b`, 'i').test(str));
     }
 
     /**
@@ -159,9 +161,9 @@ export class RulesEngine {
         const satisfiedRules: RuleNode[] = [];
 
         this.rootRules.forEach(rule => {
-            const result = rule.evaluate(facts);
+            const result = rule.evaluate(facts, this.logicEngine);
             if (result) {
-                satisfiedRules.push(...result.evaluateChildren(facts));
+                satisfiedRules.push(...result.evaluateChildren(facts, this.logicEngine));
                 satisfiedRules.push(result);
             }
         });

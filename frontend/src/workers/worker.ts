@@ -53,6 +53,24 @@ class TextGenerationSingleton {
   }
 }
 
+async function generateQueryVariations(originalQuery: string, generator: any) {
+  const prompt = `Generate 3 alternative versions of this search query, exploring different aspects. Original query: "${originalQuery}"
+  Format: Return only the queries, one per line, no numbering or prefixes.`;
+
+  const messages = [
+    { role: 'system', content: 'You are a helpful search query expansion assistant.' },
+    { role: 'user', content: prompt }
+  ];
+
+  const response = await generator.chat.completions.create({
+    messages,
+    stream: false
+  });
+
+  const variations = response.choices[0].message.content.split('\n').filter((q: string) => q.trim());
+  return [originalQuery, ...variations];
+}
+
 self.addEventListener('message', async (event) => {
   const { type, data } = event.data;
   let classifier: any = await PipelineSingleton.getInstance((x: any) => {
@@ -85,31 +103,37 @@ self.addEventListener('message', async (event) => {
     case 'search': {
       const t0 = performance.now();
 
-      if (data.page) {
-        self.postMessage({
-          status: 'search_complete',
-          query: data.query,
-          prompt: data.prompt,
-          page: data.page
-        });
-      } else {
-        let output = await classifier(data.query, {
+      // 1. Generate query variations
+      const generator = await TextGenerationSingleton.getInstance();
+      const queryVariations = await generateQueryVariations(data.query, generator);
+      
+      // 2. Perform vector search for each variation
+      const searchResults = await Promise.all(queryVariations.map(async (query) => {
+        const embedding = await classifier(query, {
           pooling: 'mean',
           normalize: true,
         });
+        return {
+          query,
+          embedding: Array.from(embedding.data)
+        };
+      }));
 
-        const embedding = Array.from(output.data);
-        self.postMessage({
-          status: 'search_complete',
-          query: data.query,
-          embedding,
-          prompt: data.prompt,
-          page: data.page
-        });
-      }
+      // 3. Combine results using RRF
+      const k = 60;
+      const fusedResults = combineMultipleRankings(searchResults);
+
+      self.postMessage({
+        status: 'search_complete',
+        query: data.query,
+        queryVariations,
+        results: fusedResults,
+        prompt: data.prompt,
+        page: data.page
+      });
 
       const t1 = performance.now();
-      console.log(`Search completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
+      console.log(`RAG-Fusion search completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
       break;
     }
     case 'generate_text': {
@@ -185,3 +209,23 @@ self.addEventListener('message', async (event) => {
     }
   }
 });
+
+function combineMultipleRankings(searchResults: any[], k: number = 60) {
+  const scoreMap = new Map<string, number>();
+  
+  // Process results from each query variation
+  searchResults.forEach(variationResults => {
+    variationResults.forEach((result: any, rank: number) => {
+      const id = result.id;
+      const rrf = 1 / (k + rank);
+      scoreMap.set(id, (scoreMap.get(id) || 0) + rrf);
+    });
+  });
+
+  return Array.from(scoreMap.entries())
+    .sort(([, a], [, b]) => b - a)
+    .map(([id]) => {
+      // Find the original result to preserve all data
+      return searchResults[0].find((r: any) => r.id === id);
+    });
+}
