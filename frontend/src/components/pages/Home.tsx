@@ -264,7 +264,7 @@ const Home: React.FC = () => {
               <div className="bg-muted rounded-lg p-4">
                 <h2 className="text-lg font-medium mb-2">Model Output</h2>
                 <div className="prose text-foreground">
-                  <p>
+                  <p className="whitespace-pre-line">
                     {answerResult}
                   </p>
                 </div>
@@ -315,8 +315,6 @@ const Home: React.FC = () => {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-
-
                 </div>
               </div>
               <div className="bg-muted rounded-lg p-4">

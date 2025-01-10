@@ -154,17 +154,19 @@ self.addEventListener('message', async (event) => {
           The information is sorted by relevance score, with higher scores indicating more reliable matches.
           Use this context to provide a comprehensive answer, citing specific pages when appropriate.
           If the context doesn't fully answer the question, acknowledge the limitations of the available information.
+          Do not use any markdown formatting in your response.
 
           ---------------------
           ${data.context}
           ---------------------
-          ${data.prompt || "Based on the provided context, answer the following question comprehensively."}`;
+          ${data.prompt || "Based on the provided context, answer the following question in plain text."}`;
 
       const user_prompt = `Query: ${data.query}
           Please provide a detailed answer that:
           1. Directly addresses the main question
           2. Cites specific pages when referencing information
-          3. Acknowledges any ambiguities or limitations in the available context
+          3. Uses plain text without any special formatting
+          4. Acknowledges any ambiguities or limitations in the available context
 
           Your answer:`;
       const messages = [
