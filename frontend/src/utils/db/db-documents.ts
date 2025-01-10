@@ -61,6 +61,97 @@ export const seedSingleDb = async (pg: PGliteWorker, chunks: any[], batchSize = 
 }
 
 /**
+ * Enhanced search function implementing RAGFusion
+ * @param {PGliteWorker} pg - The PGliteWorker instance.
+ * @param {any[]} embedding - The embedding to search for.
+ * @param {string} query - The query to search for.
+ * @param {number} match_threshold - The threshold for matching (default is 0.8).
+ * @param {number} limit - The maximum number of results to return (default is 5).
+ * @returns {Promise<any[]>} The search results.
+ */
+export const searchWithFusion = async (
+    pg: PGliteWorker,
+    embedding: any[],
+    query: string,
+    match_threshold = 0.8,
+    limit = 5,
+) => {
+    const vectorResults = await pg.query(
+        `
+        select *, chunks.embedding <#> $1 as distance
+        from chunks
+        where chunks.embedding <#> $1 < $2
+        order by chunks.embedding <#> $1
+        limit $3;
+        `,
+        [JSON.stringify(embedding), -Number(match_threshold), Number(limit)],
+    );
+
+    const keywordResults = await pg.query(
+        `
+        select *,
+            (ts_rank_cd(to_tsvector(content), plainto_tsquery($1)) + 
+             similarity(content, $1)) as rank
+        from chunks
+        where to_tsvector(content) @@ plainto_tsquery($1) 
+           or content % $1
+        order by rank desc
+        limit $2;
+        `,
+        [query, Number(limit)],
+    );
+
+    // Reciprocal Rank Fusion
+    const fusedResults = fuseResults(
+        vectorResults.rows,
+        keywordResults.rows,
+        limit
+    );
+
+    return fusedResults.map((result: any) => ({
+        content: `- ${result.content}`,
+        page_id: result.page_id,
+        score: result.fused_score
+    }));
+};
+
+/**
+ * Implements Reciprocal Rank Fusion
+ * @param {any[]} semanticResults - The semantic search results.
+ * @param {any[]} keywordResults - The keyword search results.
+ * @param {number} k - The fusion constant (default is 60).
+ * @returns {any[]} The fused results.
+ */
+export function fuseResults(
+    semanticResults: any[],
+    keywordResults: any[],
+    k: number = 60
+): any[] {
+    const scores = new Map<string, number>();
+    const documents = new Map<string, any>();
+
+    semanticResults.forEach((doc, rank) => {
+        const id = `${doc.page_id}-${doc.chunk_id}`;
+        documents.set(id, doc);
+        scores.set(id, 1 / (rank + k));
+    });
+
+    keywordResults.forEach((doc, rank) => {
+        const id = `${doc.page_id}-${doc.chunk_id}`;
+        documents.set(id, doc);
+        const existingScore = scores.get(id) || 0;
+        scores.set(id, existingScore + 1 / (rank + k));
+    });
+
+    return Array.from(documents.entries())
+        .map(([id, doc]) => ({
+            ...doc,
+            fused_score: scores.get(id) || 0
+        }))
+        .sort((a, b) => b.fused_score - a.fused_score);
+}
+
+/**
  * Searches the database for chunks matching a query.
  * @param {PGliteWorker} pg - The PGliteWorker instance.
  * @param {any[]} embedding - The embedding to search for.
