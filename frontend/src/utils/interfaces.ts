@@ -13,6 +13,7 @@ export interface WorkerMessageEvent extends MessageEvent {
         page?: number;
         isFinal?: boolean;
         prompt?: string;
+        model?: string;
     };
 }
 

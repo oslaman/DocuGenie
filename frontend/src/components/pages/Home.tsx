@@ -4,6 +4,8 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button"
 import { Loader2, Copy, Download, Share } from 'lucide-react'
 import { Textarea } from "@/components/ui/textarea"
+import { ChevronsUpDown } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 import { getDB, initSchema, countRows } from '@/utils/db/db-helper';
 import { search, searchWithPage } from '@/utils/db/db-documents';
@@ -11,10 +13,17 @@ import { getRootRules } from '@/utils/db/db-rules';
 import { RuleNode, RulesEngine } from '@/utils/rete-network';
 import { timeSince } from '@/utils/helpers';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { CheckIcon, X } from 'lucide-react';
+import {cn} from '@/lib/utils';
+
+
+import { ModelRecord, prebuiltAppConfig } from '@mlc-ai/web-llm';
 
 import '@/App.css';
 
 import ChatWorker from '@/workers/worker.ts?worker';
+import { set } from 'react-hook-form';
 
 type Message = {
   role: 'user' | 'assistant'
@@ -39,6 +48,9 @@ const Home: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [promptHistory, setPromptHistory] = useState<PromptHistory[]>([]);
+  const [model, setModel] = useState<string>('Llama-3.2-1B-Instruct-q4f32_1-MLC');
+  const [modelList, setModelList] = useState<ModelRecord[]>(prebuiltAppConfig.model_list);
+  const [modelSelectOpen, setModelSelectOpen] = useState(false);
 
   const worker = useRef<Worker | null>(null);
   const db = useRef<any>(null);
@@ -78,6 +90,7 @@ const Home: React.FC = () => {
       await initSchema(db.current);
       const count = await countRows(db.current, "chunks");
       console.log(`Found ${count} rows`);
+      console.log(prebuiltAppConfig.model_list);
     };
     if (!db.current && !initailizing.current) {
       setup();
@@ -119,6 +132,7 @@ const Home: React.FC = () => {
                 prompt: e.data.prompt,
                 query: e.data.query,
                 context: "Pages:" + retrieved_pages + "\n\n" + retrieved_contents,
+                model: model,
               },
             });
             setInput('');
@@ -181,6 +195,64 @@ const Home: React.FC = () => {
                   onChange={(e) => setUserInput(e.target.value)}
                 />
                 <div className="flex justify-end gap-2">
+                  <Popover open={modelSelectOpen} onOpenChange={() => setModelSelectOpen(!modelSelectOpen)}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={modelSelectOpen}
+                        className={cn(
+                          "w-[200px] justify-between",
+                          !model && "text-muted-foreground",
+                        )}
+                      >
+                        <span className="truncate">{model || "Select Model"}</span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[200px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Search condition..." />
+                        <CommandList>
+                          <CommandEmpty>No condition found.</CommandEmpty>
+                          {model&& (
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => {
+                                  setModel('');
+                                  setModelSelectOpen(false);
+                                }}
+                              >
+                                <X className="mr-2 h-4 w-4" />
+                                Clear selection
+                              </CommandItem>
+                            </CommandGroup>
+                          )}
+                          <CommandGroup>
+                            {modelList.map((modelItem) => (
+                              <CommandItem
+                                key={modelItem.model_id}
+                                value={modelItem.model_id}
+                                onSelect={() => {
+                                  setModel(modelItem.model_id);
+                                  setModelSelectOpen(false);
+                                }}
+                              >
+                                <CheckIcon
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    modelItem.model_id === model ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {modelItem.model_id}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <Button variant="outline" onClick={() => setUserInput('')}>Clear</Button>
                   <Button type="submit" disabled={isLoading || !userInput.trim()}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}</Button>
                 </div>

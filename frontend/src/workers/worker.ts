@@ -4,6 +4,7 @@
  */
 import { pipeline } from '@huggingface/transformers'
 import { CreateMLCEngine, InitProgressCallback } from '@mlc-ai/web-llm';
+import { get } from 'http';
 
 
 /**
@@ -50,6 +51,11 @@ class TextGenerationSingleton {
       });
     }
     return this.instance;
+  }
+
+  static setModel(newModel: string) {
+    this.model = newModel;
+    this.instance = null;
   }
 }
 
@@ -132,9 +138,16 @@ self.addEventListener('message', async (event) => {
     }
     case 'generate_text': {
       const t0 = performance.now();
+
+      if (data.model) {
+        TextGenerationSingleton.setModel(data.model);
+      }
+      
       let generator = await TextGenerationSingleton.getInstance((x) => {
         self.postMessage(x);
       });
+
+      generator.mode
 
       const prompt = data.prompt || "Based on the context, answer the following question.";
 
