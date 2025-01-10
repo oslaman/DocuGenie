@@ -14,6 +14,7 @@ export interface WorkerMessageEvent extends MessageEvent {
         isFinal?: boolean;
         prompt?: string;
         model?: string;
+        useRagFusion?: boolean;
     };
 }
 

@@ -8,7 +8,7 @@ import { ChevronsUpDown } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 import { getDB, initSchema, countRows } from '@/utils/db/db-helper';
-import { search, searchWithPage } from '@/utils/db/db-documents';
+import { search, searchWithFusion, searchWithPage } from '@/utils/db/db-documents';
 import { getRootRules } from '@/utils/db/db-rules';
 import { RuleNode, RulesEngine } from '@/utils/rete-network';
 import { timeSince } from '@/utils/helpers';
@@ -118,11 +118,13 @@ const Home: React.FC = () => {
 
             if (e.data.page) {
               searchResults = await searchWithPage(db.current, e.data.query, e.data.page);
+            } else if (e.data.useRagFusion) {
+              searchResults = await searchWithFusion(db.current, e.data.embedding, e.data.query);
             } else {
               searchResults = await search(db.current, e.data.embedding, e.data.query);
             }
 
-            console.log("Risultati: ", searchResults);
+            console.log("Results: ", searchResults);
             const retrieved_pages = searchResults.map((result: any) => result.page_id).join(', ');
             const retrieved_contents = searchResults.map((result: any) => result.content).join('\n');
             setDocumentContext(retrieved_contents);
