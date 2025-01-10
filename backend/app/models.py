@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Dict, Any, Optional
+import fitz
 
 class DocumentReader(ABC):
     @abstractmethod
@@ -22,6 +23,7 @@ class PDFReader(DocumentReader):
                  footer_threshold: Optional[float] = None,
                  exclude_headers: Optional[bool] = None,
                  exclude_footers: Optional[bool] = None):
+        from app.core.config import settings
         self.header_threshold = header_threshold or settings.HEADER_THRESHOLD
         self.footer_threshold = footer_threshold or settings.FOOTER_THRESHOLD
         self.exclude_headers = exclude_headers if exclude_headers is not None else settings.DEFAULT_EXCLUDE_HEADERS

@@ -103,37 +103,31 @@ self.addEventListener('message', async (event) => {
     case 'search': {
       const t0 = performance.now();
 
-      // 1. Generate query variations
-      const generator = await TextGenerationSingleton.getInstance();
-      const queryVariations = await generateQueryVariations(data.query, generator);
-      
-      // 2. Perform vector search for each variation
-      const searchResults = await Promise.all(queryVariations.map(async (query) => {
-        const embedding = await classifier(query, {
+      if (data.page) {
+        self.postMessage({
+          status: 'search_complete',
+          query: data.query,
+          prompt: data.prompt,
+          page: data.page
+        });
+      } else {
+        let output = await classifier(data.query, {
           pooling: 'mean',
           normalize: true,
         });
-        return {
-          query,
-          embedding: Array.from(embedding.data)
-        };
-      }));
 
-      // 3. Combine results using RRF
-      const k = 60;
-      const fusedResults = combineMultipleRankings(searchResults);
-
-      self.postMessage({
-        status: 'search_complete',
-        query: data.query,
-        queryVariations,
-        results: fusedResults,
-        prompt: data.prompt,
-        page: data.page
-      });
+        const embedding = Array.from(output.data);
+        self.postMessage({
+          status: 'search_complete',
+          query: data.query,
+          embedding,
+          prompt: data.prompt,
+          page: data.page
+        });
+      }
 
       const t1 = performance.now();
-      console.log(`RAG-Fusion search completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
+      console.log(`Search completed in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
       break;
     }
     case 'generate_text': {
@@ -209,23 +203,3 @@ self.addEventListener('message', async (event) => {
     }
   }
 });
-
-function combineMultipleRankings(searchResults: any[], k: number = 60) {
-  const scoreMap = new Map<string, number>();
-  
-  // Process results from each query variation
-  searchResults.forEach(variationResults => {
-    variationResults.forEach((result: any, rank: number) => {
-      const id = result.id;
-      const rrf = 1 / (k + rank);
-      scoreMap.set(id, (scoreMap.get(id) || 0) + rrf);
-    });
-  });
-
-  return Array.from(scoreMap.entries())
-    .sort(([, a], [, b]) => b - a)
-    .map(([id]) => {
-      // Find the original result to preserve all data
-      return searchResults[0].find((r: any) => r.id === id);
-    });
-}
